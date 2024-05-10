@@ -329,7 +329,7 @@ public class Tetris {
 	}
 
 	private boolean hasCollision() {
-		int[][] piece = getCurrentPiece();
+		int[][] piece = getCurrentShape();
 		for (int x = 0; x < piece.length; x++) {
 			for (int y = posY; y < posY + piece[0].length; y++) {
 				if (y < 0)
@@ -412,7 +412,7 @@ public class Tetris {
 	}
 
 	private void placePieceOnBoard(int[] board) {
-		int[][] piece = getCurrentPiece();
+		int[][] piece = getCurrentShape();
 
 		for (int x = 0; x < piece.length; x++) {
 			for (int y = posY; y < posY + piece[0].length; y++) {
@@ -425,11 +425,15 @@ public class Tetris {
 		}
 	}
 
-	private int[][] getCurrentPiece() {
+	private int[][] getCurrentShape() {
 		return TETROMINOS[bag[currentPiece] * 4 + rotation];
 	}
 
 	public int[][] getPieceShape(int piece) {
 		return TETROMINOS[piece * 4];
+	}
+	
+	public int getCurrentPiece() {
+		return bag[currentPiece];
 	}
 }
