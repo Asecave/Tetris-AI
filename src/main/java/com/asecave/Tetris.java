@@ -1,7 +1,5 @@
 package com.asecave;
 
-import java.util.Iterator;
-
 public class Tetris {
 
 	private int[] board;
@@ -14,24 +12,16 @@ public class Tetris {
 	private int posX, posY;
 	private int currentLockDownPass;
 	private int hold;
+	private int lockDownResets;
 
 	private static final int START_X = 3;
 	private static final int START_Y = -4;
 	private static final int LOCK_DOWN_PASSES = 4;
+	private static final int MAX_LOCK_DOWN_RESETS = 15;
 
 	// @formatter:off
 	private static final int[][][] TETROMINOS = { 
 			{ 
-				{ 0, 0, 0, 0 }, // I
-				{ 0, 0, 0, 0 }, 
-				{ 1, 1, 1, 1 }, 
-				{ 0, 0, 0, 0 }, 
-			},{ 
-				{ 0, 1, 0, 0 }, // I
-				{ 0, 1, 0, 0 }, 
-				{ 0, 1, 0, 0 }, 
-				{ 0, 1, 0, 0 }, 
-			},{ 
 				{ 0, 0, 0, 0 }, // I
 				{ 1, 1, 1, 1 }, 
 				{ 0, 0, 0, 0 }, 
@@ -41,6 +31,16 @@ public class Tetris {
 				{ 0, 0, 1, 0 }, 
 				{ 0, 0, 1, 0 }, 
 				{ 0, 0, 1, 0 }, 
+			},{ 
+				{ 0, 0, 0, 0 }, // I
+				{ 0, 0, 0, 0 }, 
+				{ 1, 1, 1, 1 }, 
+				{ 0, 0, 0, 0 }, 
+			},{ 
+				{ 0, 1, 0, 0 }, // I
+				{ 0, 1, 0, 0 }, 
+				{ 0, 1, 0, 0 }, 
+				{ 0, 1, 0, 0 }, 
 			},{ 
 				{ 0, 0, 0, 0 }, // J
 				{ 1, 0, 0, 0 }, 
@@ -205,14 +205,16 @@ public class Tetris {
 
 		if (hasCollision()) {
 			posY--;
-			if (currentLockDownPass > LOCK_DOWN_PASSES) {
+			if (currentLockDownPass > LOCK_DOWN_PASSES || lockDownResets > MAX_LOCK_DOWN_RESETS) {
 				placePiece();
-				currentLockDownPass = 0;
+				resetLockDownPass();
+				lockDownResets = 0;
 			} else {
 				currentLockDownPass++;
 			}
 		} else {
 			currentLockDownPass = 0;
+			lockDownResets = 0;
 		}
 	}
 
@@ -220,18 +222,25 @@ public class Tetris {
 
 		posX--;
 
-		if (hasCollision()) {
+		if (hasCollision())
 			posX++;
-		}
+		else
+			resetLockDownPass();
 	}
 
 	public void moveRight() {
 
 		posX++;
 
-		if (hasCollision()) {
+		if (hasCollision())
 			posX--;
-		}
+		else
+			resetLockDownPass();
+	}
+	
+	private void resetLockDownPass() {
+		currentLockDownPass = 0;
+		lockDownResets++;
 	}
 
 	public int[] getNextPieces() {
@@ -267,13 +276,13 @@ public class Tetris {
 				posX = previousX;
 				posY = previousY;
 			} else {
-				currentLockDownPass = 0;
+				resetLockDownPass();
 				return;
 			}
 		}
 		rotation = previousRotation;
 	}
-	
+
 	public void rotateRight() {
 		int previousRotation = rotation;
 		int previousX = posX;
@@ -293,13 +302,13 @@ public class Tetris {
 				posX = previousX;
 				posY = previousY;
 			} else {
-				currentLockDownPass = 0;
+				resetLockDownPass();
 				return;
 			}
 		}
 		rotation = previousRotation;
 	}
-	
+
 	public void hold() {
 		if (hold == -1) {
 			hold = bag[currentPiece];
@@ -312,9 +321,9 @@ public class Tetris {
 			posY = START_Y;
 			rotation = 0;
 		}
-		
+
 	}
-	
+
 	public int getHoldPiece() {
 		return hold;
 	}
@@ -341,20 +350,23 @@ public class Tetris {
 		clearLines();
 		nextPiece();
 	}
-	
+
 	private int clearLines() {
 		int linesCleared = 0;
 		for (int i = 0; i < board.length; i++) {
 			if ((board[i] ^ 0b1111111111) == 0) {
-				for (int j = i; j > 1; j--) {
-					board[j] = board[j - 1];
+				for (int j = i; j >= 0; j--) {
+					if (j == 0)
+						board[j] = 0;
+					else
+						board[j] = board[j - 1];
 				}
 				linesCleared++;
 			}
 		}
 		return linesCleared;
 	}
-	
+
 	private void nextPiece() {
 		currentPiece++;
 
@@ -375,7 +387,8 @@ public class Tetris {
 		}
 		posY--;
 		placePiece();
-		currentLockDownPass = 0;
+		resetLockDownPass();
+		lockDownResets = 0;
 	}
 
 	private int[] generateBag() {
@@ -415,7 +428,7 @@ public class Tetris {
 	private int[][] getCurrentPiece() {
 		return TETROMINOS[bag[currentPiece] * 4 + rotation];
 	}
-	
+
 	public int[][] getPieceShape(int piece) {
 		return TETROMINOS[piece * 4];
 	}
