@@ -13,7 +13,8 @@ public class Tetris {
 	private int currentLockDownPass;
 	private int hold;
 	private int lockDownResets;
-
+	private int totalLinesSent;
+	
 	private static final int START_X = 3;
 	private static final int START_Y = -4;
 	private static final int LOCK_DOWN_PASSES = 4;
@@ -351,7 +352,23 @@ public class Tetris {
 		nextPiece();
 	}
 
-	private int clearLines() {
+	private void clearLines() {
+		
+		boolean isTSpin = false;
+		if (bag[currentPiece] == 5) {
+			int cornersWithBlock = 0;
+			if (posX + 0 < 0 || (board[posY + 1] & (0b1000000000 >> (posX + 0))) > 0)
+				cornersWithBlock++;
+			if (posX + 2 > 9 || (board[posY + 1] & (0b1000000000 >> (posX + 2))) > 0)
+				cornersWithBlock++;
+			if (posY + 3 >= board.length || posX + 0 < 0 || (board[posY + 3] & (0b1000000000 >> (posX + 0))) > 0)
+				cornersWithBlock++;
+			if (posY + 3 >= board.length || posX + 2 > 9 || (board[posY + 3] & (0b1000000000 >> (posX + 2))) > 0)
+				cornersWithBlock++;
+			if (cornersWithBlock > 2)
+				isTSpin = true;
+		}
+		
 		int linesCleared = 0;
 		for (int i = 0; i < board.length; i++) {
 			if ((board[i] ^ 0b1111111111) == 0) {
@@ -364,7 +381,39 @@ public class Tetris {
 				linesCleared++;
 			}
 		}
-		return linesCleared;
+		
+		switch (linesCleared) {
+		case 1:
+			if (isTSpin)
+				totalLinesSent += 2;
+			break;
+		case 2:
+			if (isTSpin) 
+				totalLinesSent += 4;
+			else
+				totalLinesSent += 1;
+			break;
+		case 3:
+			if (isTSpin)
+				totalLinesSent += 6;
+			else
+				totalLinesSent += 2;
+			break;
+		case 4:
+			totalLinesSent += 4;
+			break;
+		}
+		int totalBoard = 0;
+		for (int l : board) {
+			totalBoard += l;
+		}
+		if (totalBoard == 0) {
+			totalLinesSent += 10;
+		}
+	}
+	
+	public int getTotalLinesSent() {
+		return totalLinesSent;
 	}
 
 	private void nextPiece() {
@@ -420,7 +469,7 @@ public class Tetris {
 					continue;
 				if (piece[y - posY][x] == 0)
 					continue;
-				board[y] = board[y] | (0b1000000000 >> posX + x);
+				board[y] = board[y] | (0b1000000000 >> (posX + x));
 			}
 		}
 	}

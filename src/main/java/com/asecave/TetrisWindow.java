@@ -100,6 +100,9 @@ public class TetrisWindow extends JPanel implements KeyListener {
 				}
 			}
 		}
+		
+		g2d.setColor(Color.BLACK);
+		g2d.drawString("Total Lines: " + tetris.getTotalLinesSent(), 13 * blockSize, 20 * blockSize);
 	}
 
 	public void setTetrisGame(Tetris tetris) {
