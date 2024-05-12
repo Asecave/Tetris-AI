@@ -36,7 +36,6 @@ public class TetrisWindow extends JPanel implements KeyListener {
 				int frames = 0;
 				long lastPrint = System.currentTimeMillis();
 				while (true) {
-					tetris.gravity();
 					frames++;
 					if (System.currentTimeMillis() - lastPrint > 1000) {
 						System.out.println(frames);
@@ -44,11 +43,11 @@ public class TetrisWindow extends JPanel implements KeyListener {
 						frames = 0;
 					}
 					frame.repaint();
-//					try {
-//						Thread.sleep(0, 1);
-//					} catch (InterruptedException e) {
-//						e.printStackTrace();
-//					}
+					try {
+						Thread.sleep(10);
+					} catch (InterruptedException e) {
+						e.printStackTrace();
+					}
 				}
 			}
 		}, "Repaint Loop").start();
@@ -97,10 +96,10 @@ public class TetrisWindow extends JPanel implements KeyListener {
 		g2d.fillRect(-blockSize, -blockSize, blockSize * 12, blockSize * 22);
 		if (tetris != null) {
 			int[] board = tetris.getBoard();
-			for (int i = 0; i < board.length; i++) {
+			for (int i = 0; i < 20; i++) {
 				for (int j = 0; j < 10; j++) {
 					int current = 0b1000000000 >> j;
-					if ((current & board[i]) > 0) {
+					if ((current & board[i + 4]) > 0) {
 						g2d.setColor(Color.GREEN);
 						g2d.fill3DRect(j * blockSize, i * blockSize, blockSize, blockSize, true);
 					} else {

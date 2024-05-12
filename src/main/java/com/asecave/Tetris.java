@@ -15,9 +15,11 @@ public class Tetris {
 	private int lockDownResets;
 	private int totalLinesSent;
 	private int lowestY;
+	private boolean gameOver;
+	private boolean canHold;
 	
 	private static final int START_X = 3;
-	private static final int START_Y = -4;
+	private static final int START_Y = 0;
 	private static final int LOCK_DOWN_PASSES = 4;
 	private static final int MAX_LOCK_DOWN_RESETS = 15;
 
@@ -191,7 +193,7 @@ public class Tetris {
 
 	public Tetris() {
 
-		board = new int[20];
+		board = new int[24];
 		bag = generateBag();
 		nextBag = generateBag();
 
@@ -199,6 +201,8 @@ public class Tetris {
 		posX = START_X;
 		posY = START_Y;
 		hold = -1;
+		gameOver = false;
+		canHold = true;
 	}
 
 	public void gravity() {
@@ -316,6 +320,8 @@ public class Tetris {
 	}
 
 	public void hold() {
+		if (!canHold)
+			return;
 		if (hold == -1) {
 			hold = bag[currentPiece];
 			nextPiece();
@@ -327,7 +333,7 @@ public class Tetris {
 			posY = START_Y;
 			rotation = 0;
 		}
-
+		canHold = false;
 	}
 
 	public int getHoldPiece() {
@@ -342,9 +348,7 @@ public class Tetris {
 					continue;
 				if (posX + x < 0 || posX + x > 9)
 					return true;
-				if (y < 0)
-					continue;
-				if (y >= 20 || (board[y] & (0b1000000000 >> posX + x)) > 0)
+				if (y >= 24 || (board[y] & (0b1000000000 >> posX + x)) > 0)
 					return true;
 			}
 		}
@@ -356,6 +360,7 @@ public class Tetris {
 		clearLines();
 		nextPiece();
 		lowestY = 0;
+		canHold = true;
 	}
 
 	private void clearLines() {
@@ -434,6 +439,10 @@ public class Tetris {
 		posX = START_X;
 		posY = START_Y;
 		rotation = 0;
+		
+		if (hasCollision()) {
+			gameOver = true;
+		}
 	}
 
 	public void hardDrop() {
@@ -490,5 +499,9 @@ public class Tetris {
 	
 	public int getCurrentPiece() {
 		return bag[currentPiece];
+	}
+	
+	public boolean isGameOver() {
+		return gameOver;
 	}
 }
