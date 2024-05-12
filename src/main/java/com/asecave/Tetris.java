@@ -363,13 +363,13 @@ public class Tetris {
 		boolean isTSpin = false;
 		if (bag[currentPiece] == 5) {
 			int cornersWithBlock = 0;
-			if (posX + 0 < 0 || (board[posY + 1] & (0b1000000000 >> (posX + 0))) > 0)
+			if (posX + 0 < 0 || (posY + 1 >= 0 && (board[posY + 1] & (0b1000000000 >> (posX + 0))) > 0))
 				cornersWithBlock++;
-			if (posX + 2 > 9 || (board[posY + 1] & (0b1000000000 >> (posX + 2))) > 0)
+			if (posX + 2 > 9 || (posY + 1 >= 0 && (board[posY + 1] & (0b1000000000 >> (posX + 2))) > 0))
 				cornersWithBlock++;
-			if (posY + 3 >= board.length || posX + 0 < 0 || (board[posY + 3] & (0b1000000000 >> (posX + 0))) > 0)
+			if (posY + 3 >= board.length || posX + 0 < 0 || (posY + 3 >= 0 && (board[posY + 3] & (0b1000000000 >> (posX + 0))) > 0))
 				cornersWithBlock++;
-			if (posY + 3 >= board.length || posX + 2 > 9 || (board[posY + 3] & (0b1000000000 >> (posX + 2))) > 0)
+			if (posY + 3 >= board.length || posX + 2 > 9 || (posY + 3 >= 0 && (board[posY + 3] & (0b1000000000 >> (posX + 2))) > 0))
 				cornersWithBlock++;
 			if (cornersWithBlock > 2)
 				isTSpin = true;

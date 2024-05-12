@@ -32,13 +32,23 @@ public class TetrisWindow extends JPanel implements KeyListener {
 
 			@Override
 			public void run() {
+
+				int frames = 0;
+				long lastPrint = System.currentTimeMillis();
 				while (true) {
-					frame.repaint();
-					try {
-						Thread.sleep(10);
-					} catch (InterruptedException e) {
-						e.printStackTrace();
+					tetris.gravity();
+					frames++;
+					if (System.currentTimeMillis() - lastPrint > 1000) {
+						System.out.println(frames);
+						lastPrint = System.currentTimeMillis();
+						frames = 0;
 					}
+					frame.repaint();
+//					try {
+//						Thread.sleep(0, 1);
+//					} catch (InterruptedException e) {
+//						e.printStackTrace();
+//					}
 				}
 			}
 		}, "Repaint Loop").start();
@@ -100,9 +110,11 @@ public class TetrisWindow extends JPanel implements KeyListener {
 				}
 			}
 		}
-		
-		g2d.setColor(Color.BLACK);
-		g2d.drawString("Total Lines: " + tetris.getTotalLinesSent(), 13 * blockSize, 20 * blockSize);
+
+		if (tetris != null) {
+			g2d.setColor(Color.WHITE);
+			g2d.drawString("Total Lines: " + tetris.getTotalLinesSent(), 13 * blockSize, 20 * blockSize);
+		}
 	}
 
 	public void setTetrisGame(Tetris tetris) {
