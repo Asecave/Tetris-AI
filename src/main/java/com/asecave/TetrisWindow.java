@@ -16,6 +16,7 @@ public class TetrisWindow extends JPanel implements KeyListener {
 	private Tetris tetris;
 	private JFrame frame;
 	final int blockSize = 50;
+	private boolean repaintLoop = true;
 
 	public TetrisWindow() {
 		frame = new JFrame("AI Tetris");
@@ -35,7 +36,7 @@ public class TetrisWindow extends JPanel implements KeyListener {
 
 				int frames = 0;
 				long lastPrint = System.currentTimeMillis();
-				while (true) {
+				while (repaintLoop) {
 					frames++;
 					if (System.currentTimeMillis() - lastPrint > 1000) {
 						System.out.println(frames);
@@ -154,5 +155,10 @@ public class TetrisWindow extends JPanel implements KeyListener {
 	@Override
 	public void keyReleased(KeyEvent e) {
 
+	}
+
+	public void close() {
+		repaintLoop = false;
+		frame.dispose();
 	}
 }

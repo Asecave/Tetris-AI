@@ -10,7 +10,7 @@ class Main {
 		
 		window.setTetrisGame(tetris);
 		
-		while (true) {
+		while (!tetris.isGameOver()) {
 			tetris.gravity();
 			try {
 				Thread.sleep(100);
@@ -18,6 +18,7 @@ class Main {
 				e.printStackTrace();
 			}
 		}
+		window.close();
 	}
 
 }
