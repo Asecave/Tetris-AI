@@ -14,6 +14,7 @@ public class Tetris {
 	private int hold;
 	private int lockDownResets;
 	private int totalLinesSent;
+	private int lowestY;
 	
 	private static final int START_X = 3;
 	private static final int START_Y = -4;
@@ -204,6 +205,9 @@ public class Tetris {
 
 		posY++;
 
+		if (lowestY < posY)
+			lowestY = posY;
+		
 		if (hasCollision()) {
 			posY--;
 			if (currentLockDownPass > LOCK_DOWN_PASSES || lockDownResets > MAX_LOCK_DOWN_RESETS) {
@@ -215,7 +219,8 @@ public class Tetris {
 			}
 		} else {
 			currentLockDownPass = 0;
-			lockDownResets = 0;
+			if (posY > lowestY)
+				lockDownResets = 0;
 		}
 	}
 
@@ -293,9 +298,9 @@ public class Tetris {
 			rotation -= 4;
 		final int[] kickTable;
 		if (bag[currentPiece] == 0)
-			kickTable = I_KICK_TABLE[rotation * 2];
+			kickTable = I_KICK_TABLE[previousRotation * 2];
 		else
-			kickTable = JLSTZ_KICK_TABLE[rotation * 2];
+			kickTable = JLSTZ_KICK_TABLE[previousRotation * 2];
 		for (int i = 0; i < kickTable.length; i += 2) {
 			posX += kickTable[i + 0];
 			posY -= kickTable[i + 1];
@@ -333,12 +338,12 @@ public class Tetris {
 		int[][] piece = getCurrentShape();
 		for (int x = 0; x < piece.length; x++) {
 			for (int y = posY; y < posY + piece[0].length; y++) {
-				if (y < 0)
-					continue;
 				if (piece[y - posY][x] == 0)
 					continue;
 				if (posX + x < 0 || posX + x > 9)
 					return true;
+				if (y < 0)
+					continue;
 				if (y >= 20 || (board[y] & (0b1000000000 >> posX + x)) > 0)
 					return true;
 			}
@@ -350,6 +355,7 @@ public class Tetris {
 		placePieceOnBoard(board);
 		clearLines();
 		nextPiece();
+		lowestY = 0;
 	}
 
 	private void clearLines() {
