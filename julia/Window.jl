@@ -17,6 +17,7 @@ function window()
             event.key == Keyboard.left && rotate_left(tetris)
             event.key == Keyboard.right && rotate_right(tetris)
             event.key == Keyboard.up && hard_drop(tetris)
+            event.key == Keyboard.down && soft_drop(tetris)
             event.key == Keyboard.left_shift && hold(tetris)
             event.key == Keyboard.escape && exit()
         end

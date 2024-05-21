@@ -199,7 +199,7 @@ end
 function _has_collision(tetris::Tetris)
     piece = _get_current_shape(tetris)
     for x in 1:length(piece)
-        for y in tetris.pos_y:(tetris.pos_y + length(piece[1]) - 1)
+        for y in tetris.pos_y + 1:(tetris.pos_y + length(piece[1]) - 1)
             if piece[y - tetris.pos_y + 1][x] == 0
                 continue
             end
@@ -455,6 +455,13 @@ function hard_drop(tetris::Tetris)
     _place_piece(tetris)
     _reset_lock_down_pass(tetris)
     tetris.lock_down_resets = 0
+end
+
+function soft_drop(tetris::Tetris)
+    while !_has_collision(tetris)
+        tetris.pos_y += 1
+    end
+    tetris.pos_y -= 1
 end
 
 function get_board(tetris::Tetris)
