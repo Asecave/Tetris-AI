@@ -1,3 +1,23 @@
+module Tetrises
+
+export Tetris,
+gravity,
+move_left,
+move_right,
+rotate_left,
+rotate_right,
+hold,
+get_next_pieces,
+get_hold_piece,
+get_total_lines_sent,
+hard_drop,
+soft_drop,
+get_board,
+get_piece_shape,
+get_current_piece,
+is_game_over,
+get_score
+
 const TETROMINOS = [ 
     [ 
         [ 0, 0, 0, 0 ], # I
@@ -171,7 +191,7 @@ const MAX_LOCK_DOWN_RESETS = 15
 
 mutable struct Tetris
 
-    board::Vector{Int32}
+    board::Vector{Int16}
     current_piece::Int8
     rotation::Int8
     bag::Vector{Int8}
@@ -185,6 +205,7 @@ mutable struct Tetris
     lowest_y::Int8
     game_over::Bool
     can_hold::Bool
+    score::Int
 
     function Tetris()
         new(zeros(Int8, 24), 1, 0, _generate_bag(), _generate_bag(), START_X, START_Y, 0, -1, 0, 0, 1, false, true)
@@ -480,4 +501,10 @@ end
 
 function is_game_over(tetris::Tetris)
     return tetris.game_over
+end
+
+function get_score(tetris::Tetris)
+    return tetris.score
+end
+
 end

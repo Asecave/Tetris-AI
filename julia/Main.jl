@@ -1,6 +1,8 @@
-include("Tetris.jl")
-include("Window.jl")
+include("Tetrises.jl")
+include("ConsoleUIs.jl")
+
+using .Tetrises
+using .ConsoleUIs
 
 tetris = Tetris()
-
-window()
+draw(tetris)
