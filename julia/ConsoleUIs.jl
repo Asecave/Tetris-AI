@@ -69,7 +69,7 @@ function draw(tetris::Tetris)
 
     x = 18
     y = 21
-    score = "000000"
+    score = ("" * lpad(get_score(tetris), 6, "0"))
     board[x+=1][y] = get_ansi_rgb(BACKGROUND_COLOR, get_ansi_rgb(text_color, score[1:2], false), true)
     board[x+=1][y] = get_ansi_rgb(BACKGROUND_COLOR, get_ansi_rgb(text_color, score[3:4], false), true)
     board[x+=1][y] = get_ansi_rgb(BACKGROUND_COLOR, get_ansi_rgb(text_color, score[5:6], false), true)

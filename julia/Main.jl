@@ -5,4 +5,9 @@ using .Tetrises
 using .ConsoleUIs
 
 tetris = Tetris()
-draw(tetris)
+
+while true
+    draw(tetris)
+    gravity(tetris)
+    sleep(1/10)
+end

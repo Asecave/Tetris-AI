@@ -276,29 +276,60 @@ function _clear_lines(tetris::Tetris)
             lines_cleared += 1
         end
     end
-    if lines_cleared == 1
+
+    score = 0
+    is_perfect_clear = false
+
+    total_board = sum(tetris.board)
+    if total_board == 0
+        tetris.total_lines_sent += 10
+        is_perfect_clear = true
+    end
+
+    if lines_cleared == 0
+        if is_t_spin
+            score += 400
+        end
+    elseif lines_cleared == 1
         if is_t_spin
             tetris.total_lines_sent += 2
+            score += 800
+        else
+            score += 100
+            if is_perfect_clear
+                score += 800
+            end
         end
     elseif lines_cleared == 2
         if is_t_spin
             tetris.total_lines_sent += 4
+            score += 1200
         else
             tetris.total_lines_sent += 1
+            score += 300
+            if is_perfect_clear
+                score += 1200
+            end
         end
     elseif lines_cleared == 3
         if is_t_spin
             tetris.total_lines_sent += 6
+            score += 1600
         else
             tetris.total_lines_sent += 2
+            score += 500
+            if is_perfect_clear
+                score += 1800
+            end
         end
     elseif lines_cleared == 4
         tetris.total_lines_sent += 4
+        score += 800
+        if is_perfect_clear
+            score += 2000
+        end
     end
-    total_board = sum(tetris.board)
-    if total_board == 0
-        tetris.total_lines_sent += 10
-    end
+
 end
 
 function _next_piece(tetris::Tetris)
