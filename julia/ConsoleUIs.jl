@@ -55,7 +55,7 @@ function draw(tetris::Tetris)
         for j in 0:9
             current = 0b1000000000 >>> j
             if (current & line) > 0
-                board[j + 6][i - 3] = PIECE
+                board[j + 7][i - 2] = PIECE
             end
         end
     end

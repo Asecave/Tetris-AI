@@ -502,8 +502,10 @@ end
 function hard_drop(tetris::Tetris)
     while !_has_collision(tetris)
         tetris.pos_y += 1
+        tetris.score += 2
     end
     tetris.pos_y -= 1
+    tetris.score -= 2
     _place_piece(tetris)
     _reset_lock_down_pass(tetris)
     tetris.lock_down_resets = 0
@@ -512,8 +514,10 @@ end
 function soft_drop(tetris::Tetris)
     while !_has_collision(tetris)
         tetris.pos_y += 1
+        tetris.score += 1
     end
     tetris.pos_y -= 1
+    tetris.score -= 1
 end
 
 function get_board(tetris::Tetris)
