@@ -5,7 +5,7 @@ use miniquad::window::set_window_size;
 
 use crate::{game::chase_point::ChasePoint, genome::Genome, UIShared, FRAMES_PER_GEN};
 
-pub async fn open_ui(displayed_genome: Arc<Mutex<UIShared>>) {
+pub async fn open_ui(ui_shared: Arc<Mutex<UIShared>>) {
 
     set_window_size(1600, 1000);
 
@@ -21,12 +21,12 @@ pub async fn open_ui(displayed_genome: Arc<Mutex<UIShared>>) {
 
         rect(screen_width() / 2.0 - 250.0, screen_height() / 2.0, 500.0, 400.0, LIGHTGRAY);
 
-        if let Ok(ui_shared) = displayed_genome.try_lock() {
-            previous_ui = Some((*ui_shared).clone());
+        if let Ok(ui) = ui_shared.try_lock() {
+            previous_ui = Some((*ui).clone());
         }
-        if let Some(ref ui_shared) = previous_ui {
+        if let Some(ui) = previous_ui.clone() {
             let mut total_dst = 0.0;
-            if let Some(agent) = &ui_shared.agent {
+            if let Some(agent) = &ui.agent {
                 draw_genome(&agent.genome, screen_width() / 2.0, screen_height() / 2.0 + 200.0);
                 draw_game(&agent.game, screen_width() / 2.0, screen_height() / 2.0 - 250.0);
 
@@ -34,16 +34,29 @@ pub async fn open_ui(displayed_genome: Arc<Mutex<UIShared>>) {
             }
             let mut info_text = String::new();
 
-            info_text.push_str(format!("Generation: {}\n", &ui_shared.generation).as_str());
-            info_text.push_str(format!("Best fitness: {}\n", &ui_shared.best_fitness).as_str());
-            info_text.push_str(format!("Frame: {}/{}\n", &ui_shared.current_frame, FRAMES_PER_GEN).as_str());
+            info_text.push_str(format!("Generation: {}\n", &ui.generation).as_str());
+            info_text.push_str(format!("Best fitness: {}\n", &ui.best_fitness).as_str());
+            info_text.push_str(format!("Frame: {}/{}\n", &ui.current_frame, FRAMES_PER_GEN).as_str());
             info_text.push_str(format!("Total Distance: {}\n", total_dst).as_str());
-            info_text.push_str(format!("Current Fitness: {}\n", &ui_shared.current_fitness).as_str());
+            info_text.push_str(format!("Current fitness: {}\n", &ui.current_fitness).as_str());
+            info_text.push_str(format!("Last evaluation time: {}ms\n", &ui.last_evaluation_time).as_str());
+            info_text.push_str(format!("Last selection & mutation time: {}ms\n", &ui.last_selection_mutation_time).as_str());
+            info_text.push_str(format!("Sleep time: {}ms\n", &ui.sleep_time).as_str());
 
             let mut text_row_offset = 0.0;
             for line in info_text.split("\n") {
-                draw_text(line, 50.0, text_row_offset + 50.0, 40.0, BLACK);
+                draw_text(line, 50.0, text_row_offset + 50.0, 30.0, BLACK);
                 text_row_offset += 30.0;
+            }
+
+            // Input
+            if is_key_pressed(KeyCode::Down) && ui.sleep_time != 0 {
+                let mut ui = ui_shared.lock().unwrap();
+                ui.sleep_time -= 10;
+            }
+            if is_key_pressed(KeyCode::Up) {
+                let mut ui = ui_shared.lock().unwrap();
+                ui.sleep_time += 10;
             }
         }
 

@@ -10,15 +10,19 @@ pub struct ChasePoint {
     pub point_y: f32,
     pub player_x: f32,
     pub player_y: f32,
-    vel_x: f32,
-    vel_y: f32,
+    pub vel_x: f32,
+    pub vel_y: f32,
     pub total_distance: f32,
 }
 
 impl ChasePoint {
     pub fn new() -> Self {
-        let pos_x = 0.9;//if thread_rng().gen_bool(0.5) {-0.9} else {0.9};
-        let pos_y = 0.9;//if thread_rng().gen_bool(0.5) {-0.9} else {0.9};
+        // let pos_x = 0.9;//if thread_rng().gen_bool(0.5) {-0.9} else {0.9};
+        // let pos_y = 0.9;//if thread_rng().gen_bool(0.5) {-0.9} else {0.9};
+        let angle = thread_rng().gen_range(0.0..2.0 * std::f32::consts::PI);
+        let distance = 1.0;
+        let pos_x = distance * f32::cos(angle);
+        let pos_y = distance * f32::sin(angle);
         Self {
             point_x: 0.0,
             point_y: 0.0,

@@ -20,6 +20,11 @@ struct UIShared {
     best_fitness: f32,
     current_frame: u32,
     current_fitness: f32,
+    last_evaluation_time: u128,
+    last_selection_mutation_time: u128,
+
+    // User Input
+    sleep_time: u64,
 }
 
 #[macroquad::main("AI")]
@@ -32,6 +37,9 @@ async fn main() {
         best_fitness: 0.0,
         current_frame: 0,
         current_fitness: 0.0,
+        last_evaluation_time: 0,
+        last_selection_mutation_time: 0,
+        sleep_time: 100,
     };
     let ui_shared_ref: Arc<Mutex<UIShared>> = Arc::new(Mutex::new(ui_shared));
 
@@ -50,10 +58,9 @@ fn generation(ui_shared: &Arc<Mutex<UIShared>>) {
         population.push(Agent::new());
     }
 
-    let mut calc_durations= [0u32; NUM_AGENTS as usize];
-    let mut current_duration: usize = 0;
-    let mut reached_end = false;
     let mut generation = 0;
+    let mut last_evaluation_time = 0;
+    let mut last_selection_mutation_time = 0;
 
     loop {
 
@@ -61,23 +68,17 @@ fn generation(ui_shared: &Arc<Mutex<UIShared>>) {
             let mut ui_shared = ui_shared.lock().unwrap();
             ui_shared.generation = generation;
             ui_shared.best_fitness = population[0].fitness;
+            ui_shared.last_evaluation_time = last_evaluation_time;
+            ui_shared.last_selection_mutation_time = last_selection_mutation_time;
         }
 
         let start = SystemTime::now();
-
         evaluation(&mut population, ui_shared);
+        last_evaluation_time = SystemTime::now().duration_since(start).unwrap().as_millis();
 
-        calc_durations[current_duration] = SystemTime::now().duration_since(start).unwrap().as_millis() as u32;
-        current_duration = (current_duration + 1) % calc_durations.len();
-        if current_duration == 0 {
-            reached_end = true;
-        }
-        if reached_end {
-            let average_time = calc_durations.iter().sum::<u32>() as f32 / calc_durations.len() as f32;
-            dbg!(average_time);
-        }
-
+        let start = SystemTime::now();
         population = select_and_mutate(&mut population);
+        last_selection_mutation_time = SystemTime::now().duration_since(start).unwrap().as_millis();
 
         for agent in population.iter_mut() {
             agent.game = ChasePoint::new();
@@ -89,6 +90,7 @@ fn generation(ui_shared: &Arc<Mutex<UIShared>>) {
 
 fn evaluation(population: &mut Vec<Agent>, ui_shared: &Arc<Mutex<UIShared>>) {
     let mut last_ui_update = 0;
+    let mut sleep_time: u64 = 0;
 
     // reset fitness
     for agent in population.iter_mut() {
@@ -108,9 +110,10 @@ fn evaluation(population: &mut Vec<Agent>, ui_shared: &Arc<Mutex<UIShared>>) {
             ui_shared.current_frame = current_frame;
             ui_shared.current_fitness = population[0].fitness;
             last_ui_update = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
+            sleep_time = ui_shared.sleep_time;
         }
 
-        //thread::sleep(std::time::Duration::from_millis(f32::floor(1000.0 / 144.0) as u64));
+        thread::sleep(std::time::Duration::from_millis(sleep_time));
     }
 }
 
@@ -167,7 +170,7 @@ fn mutate_agent(mut agent: Agent) -> Agent {
 
     let mut rebuild_needed = false;
 
-    if num_edges > 0 && thread_rng().gen_bool(0.05) {
+    if num_edges > 0 && thread_rng().gen_bool(0.02) {
         // new node
         let random_edge = agent.genome.connections[thread_rng().gen_range(0..num_edges)];
         let old_edge_target = agent.genome.nodes[random_edge.0].connections[random_edge.1].0;
@@ -183,7 +186,7 @@ fn mutate_agent(mut agent: Agent) -> Agent {
         rebuild_needed = true;
     }
 
-    if thread_rng().gen_bool(0.8) {
+    if thread_rng().gen_bool(0.6) {
         // new conenction
 
         let mut other_node;

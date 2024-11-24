@@ -12,7 +12,8 @@
                 "args": [
                     "build",
                     "--bin=tetris-ai",
-                    "--package=tetris-ai"
+                    "--package=tetris-ai",
+                    "--release"
                 ],
                 "filter": {
                     "name": "tetris-ai",
