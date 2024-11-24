@@ -9,9 +9,12 @@ use game::chase_point::ChasePoint;
 use genome::{Node, Genome, ActivationFunction};
 use agent::Agent;
 use rand::{thread_rng, Rng};
+use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
-pub const NUM_AGENTS: u32 = 100;
-pub const FRAMES_PER_GEN: u32 = 200;
+pub const NUM_AGENTS: u32 = 10000;
+pub const FRAMES_PER_GEN: u32 = 100;
+pub const MAX_NODES: u32 = 10;
+pub const MAX_EDGES: u32 = 10;
 
 #[derive(Clone)]
 struct UIShared {
@@ -39,7 +42,7 @@ async fn main() {
         current_fitness: 0.0,
         last_evaluation_time: 0,
         last_selection_mutation_time: 0,
-        sleep_time: 100,
+        sleep_time: 10,
     };
     let ui_shared_ref: Arc<Mutex<UIShared>> = Arc::new(Mutex::new(ui_shared));
 
@@ -99,9 +102,7 @@ fn evaluation(population: &mut Vec<Agent>, ui_shared: &Arc<Mutex<UIShared>>) {
 
     for current_frame in 0..FRAMES_PER_GEN {
 
-        for agent in population.iter_mut() {
-            agent.play();
-        }
+        population.par_iter_mut().for_each(|agent| agent.play());
 
         // Update ui
         if SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() - last_ui_update >= 1000 / 144 {
@@ -121,7 +122,7 @@ fn select_and_mutate(population: &mut Vec<Agent>) -> Vec<Agent> {
 
     population.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
 
-    let move_straight_to_next_gen = (population.len() as f32 * 0.3) as usize;
+    let move_straight_to_next_gen = (population.len() as f32 * 0.1) as usize;
     let selection_probability = 1.0 / (population.len() as f32 * 0.6);
 
     let (next_generation, remaining) = population.split_at(move_straight_to_next_gen);
@@ -170,7 +171,7 @@ fn mutate_agent(mut agent: Agent) -> Agent {
 
     let mut rebuild_needed = false;
 
-    if num_edges > 0 && thread_rng().gen_bool(0.02) {
+    if num_nodes < MAX_NODES as usize && num_edges > 0 && thread_rng().gen_bool(0.02) {
         // new node
         let random_edge = agent.genome.connections[thread_rng().gen_range(0..num_edges)];
         let old_edge_target = agent.genome.nodes[random_edge.0].connections[random_edge.1].0;
@@ -186,7 +187,7 @@ fn mutate_agent(mut agent: Agent) -> Agent {
         rebuild_needed = true;
     }
 
-    if thread_rng().gen_bool(0.6) {
+    if num_edges < MAX_EDGES as usize && thread_rng().gen_bool(0.6) {
         // new conenction
 
         let mut other_node;
