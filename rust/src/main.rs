@@ -15,6 +15,7 @@ pub const NUM_AGENTS: usize = 1000;
 pub const FRAMES_PER_GEN: u32 = 1000;
 pub const MAX_NODES: u32 = 8;
 pub const MAX_EDGES: u32 = 8;
+pub const USE_PARALLELISM: bool = false;
 
 #[derive(Clone)]
 struct UIShared {
@@ -102,7 +103,11 @@ fn evaluation(population: &mut Vec<Agent>, ui_shared: &Arc<Mutex<UIShared>>) {
 
     for current_frame in 0..FRAMES_PER_GEN {
 
-        population.par_iter_mut().for_each(|agent| agent.play());
+        if USE_PARALLELISM {
+            population.par_iter_mut().for_each(|agent| agent.play());
+        } else {
+            population.iter_mut().for_each(|agent| agent.play());
+        }
 
         // Update ui
         if SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() - last_ui_update >= 1000 / 144 {
