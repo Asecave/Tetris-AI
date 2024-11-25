@@ -126,7 +126,7 @@ fn draw_genome(genome : &Genome, x: f32, y: f32) {
                     node_positions[i].1,
                     25.0,
                     -5.0,
-                    BLACK
+                    if genome.output_nodes.contains(&i) {WHITE} else {BLACK}
                 );
             } else {
                 for (connection, weight) in &node.connections {

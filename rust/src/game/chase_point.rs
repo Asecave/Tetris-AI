@@ -17,12 +17,12 @@ pub struct ChasePoint {
 
 impl ChasePoint {
     pub fn new() -> Self {
-        let pos_x = 0.9;//if thread_rng().gen_bool(0.5) {-0.9} else {0.9};
-        let pos_y = 0.9;//if thread_rng().gen_bool(0.5) {-0.9} else {0.9};
-        // let angle = thread_rng().gen_range(0.0..2.0 * std::f32::consts::PI);
-        // let distance = 1.0;
-        // let pos_x = distance * f32::cos(angle);
-        // let pos_y = distance * f32::sin(angle);
+        // let pos_x = 0.9;//if thread_rng().gen_bool(0.5) {-0.9} else {0.9};
+        // let pos_y = 0.9;//if thread_rng().gen_bool(0.5) {-0.9} else {0.9};
+        let angle = thread_rng().gen_range(0.0..2.0 * std::f32::consts::PI);
+        let distance = 1.0;
+        let pos_x = distance * f32::cos(angle);
+        let pos_y = distance * f32::sin(angle);
         Self {
             point_x: 0.0,
             point_y: 0.0,
@@ -35,11 +35,11 @@ impl ChasePoint {
     }
 
     pub fn move_x(&mut self, amount: f32) {
-        self.vel_x += f32::min(1.0, f32::max(-1.0, amount)) * 0.0002;
+        self.vel_x += f32::min(1.0, f32::max(-1.0, amount)) * 0.01;
     }
 
     pub fn move_y(&mut self, amount: f32) {
-        self.vel_y += f32::min(1.0, f32::max(-1.0, amount)) * 0.0002;
+        self.vel_y += f32::min(1.0, f32::max(-1.0, amount)) * 0.01;
     }
 
     pub fn target_distance2(&self) -> f32 {
@@ -76,6 +76,9 @@ impl Game for ChasePoint {
 
         self.total_distance += f32::abs(self.vel_x);
         self.total_distance += f32::abs(self.vel_y);
+
+        self.vel_x *= 0.95;
+        self.vel_y *= 0.95;
 
         if self.player_x > 1.0 {
             self.player_x = 1.0;

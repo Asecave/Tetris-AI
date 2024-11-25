@@ -6,15 +6,15 @@ mod ui;
 use std::{sync::{Arc, Mutex}, thread, time::{SystemTime, UNIX_EPOCH}};
 
 use game::chase_point::ChasePoint;
-use genome::{Node, Genome, ActivationFunction};
+use genome::Node;
 use agent::Agent;
 use rand::{thread_rng, Rng};
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
 pub const NUM_AGENTS: usize = 1000;
 pub const FRAMES_PER_GEN: u32 = 1000;
-pub const MAX_NODES: u32 = 10;
-pub const MAX_EDGES: u32 = 10;
+pub const MAX_NODES: u32 = 8;
+pub const MAX_EDGES: u32 = 8;
 
 #[derive(Clone)]
 struct UIShared {
@@ -48,12 +48,12 @@ async fn main() {
 
     let ui_shared_ref_1 = Arc::clone(&ui_shared_ref);
     thread::spawn(move || {
-        generation(&ui_shared_ref_1);
+        evolution(&ui_shared_ref_1);
     });
     ui::open_ui(Arc::clone(&Arc::clone(&ui_shared_ref))).await;
 }
 
-fn generation(ui_shared: &Arc<Mutex<UIShared>>) {
+fn evolution(ui_shared: &Arc<Mutex<UIShared>>) {
 
     let mut population: Vec<Agent> = Vec::with_capacity(NUM_AGENTS);
 
@@ -123,7 +123,7 @@ fn select_and_mutate(population: &mut Vec<Agent>) -> Vec<Agent> {
     population.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
 
     let move_straight_to_next_gen = (population.len() as f32 * 0.1) as usize;
-    let selection_probability = 1.0 / (population.len() as f32 * 0.6);
+    let selection_probability = 1.0 / (population.len() as f32 * 0.5);
 
     let next_generation = population.split_at(move_straight_to_next_gen).0;
     let mut next_generation = next_generation.to_vec();
@@ -169,90 +169,136 @@ fn mutate_agent(mut agent: Agent) -> Agent {
         }
     }
 
-    let mut rebuild_needed = false;
-
     if num_nodes < MAX_NODES as usize && num_edges > 0 && thread_rng().gen_bool(0.02) {
-        // new node
-        let random_edge = agent.genome.connections[thread_rng().gen_range(0..num_edges)];
-        let old_edge_target = agent.genome.nodes[random_edge.0].connections[random_edge.1].0;
-        
-        let mut new_node = Node::new();
-        new_node.bias = thread_rng().gen_range(-1.0..1.0);
-        new_node.connections.push((old_edge_target, thread_rng().gen_range(-1.0..1.0)));
+        if thread_rng().gen_bool(0.5) {
+            // new node
+            let random_edge = agent.genome.connections[thread_rng().gen_range(0..num_edges)];
+            let old_edge_target = agent.genome.nodes[random_edge.0].connections[random_edge.1].0;
+            
+            let mut new_node = Node::new();
+            new_node.bias = thread_rng().gen_range(-1.0..1.0);
+            new_node.connections.push((old_edge_target, thread_rng().gen_range(-1.0..1.0)));
 
-        agent.genome.nodes.push(new_node);
+            agent.genome.nodes.push(new_node);
 
-        agent.genome.nodes[random_edge.0].connections[random_edge.1] = (agent.genome.nodes.len() - 1, thread_rng().gen_range(-1.0..1.0));
-
-        rebuild_needed = true;
+            agent.genome.nodes[random_edge.0].connections[random_edge.1] = (agent.genome.nodes.len() - 1, thread_rng().gen_range(-1.0..1.0));
+        } else {
+            // remove node
+            let random_node = thread_rng().gen_range(0..num_nodes);
+            if agent.genome.nodes[random_node].layer > 0 && !agent.genome.output_nodes.contains(&random_node) {
+                agent.genome.nodes.remove(random_node);
+                for node in agent.genome.nodes.iter_mut() {
+                    node.connections.retain(|con| con.0 != random_node);
+                    for con in node.connections.iter_mut() {
+                        if con.0 > random_node {
+                            con.0 -= 1;
+                        }
+                    }
+                }
+            }
+        }
     }
+
+    agent.genome.build();
+    let num_nodes = agent.genome.nodes.len();
+    let num_edges = agent.genome.connections.len();
 
     if num_edges < MAX_EDGES as usize && thread_rng().gen_bool(0.6) {
-        // new conenction
+        if thread_rng().gen_bool(0.5) {
+            // new conenction
 
-        let mut other_node;
+            let mut other_node;
 
-        loop {
-            other_node = thread_rng().gen_range(0..num_nodes);
+            loop {
+                other_node = thread_rng().gen_range(0..num_nodes);
 
-            if agent.genome.nodes[other_node].layer > 0 {
-                break;
+                if agent.genome.nodes[other_node].layer > 0 {
+                    break;
+                }
             }
-        }
 
-        let other_node_layer = agent.genome.nodes[other_node].layer;
+            let other_node_layer = agent.genome.nodes[other_node].layer;
 
-        let mut first_node;
-        loop {
-            first_node = &mut agent.genome.nodes[thread_rng().gen_range(0..num_nodes)];
+            let mut first_node;
+            loop {
+                first_node = &mut agent.genome.nodes[thread_rng().gen_range(0..num_nodes)];
 
-            if first_node.layer < other_node_layer {
-                break;
+                if first_node.layer < other_node_layer {
+                    break;
+                }
             }
-        }
 
-        if !first_node.connections.iter().any(|con| con.0 == other_node) {
-            first_node.connections.push((other_node, thread_rng().gen_range(-1.0..1.0)));
-
-            rebuild_needed = true;
+            if !first_node.connections.iter().any(|con| con.0 == other_node) {
+                first_node.connections.push((other_node, thread_rng().gen_range(-1.0..1.0)));
+            }
+        } else if num_edges > 0 {
+            // remove connection
+            let random_edge = agent.genome.connections[thread_rng().gen_range(0..num_edges)];
+            agent.genome.nodes[random_edge.0].connections.remove(random_edge.1);
         }
     }
 
-    if rebuild_needed {
-        agent.genome.build();
-    }
+    agent.genome.build();
+    let mut num_nodes = agent.genome.nodes.len();
+
+    // remove dangling nodes
+    // let mut found_dangling = false;
+    // loop {
+    //     for i in 0..num_nodes {
+    //         if agent.genome.nodes[i].layer > 0 && !agent.genome.output_nodes.contains(&i) && agent.genome.nodes[i].connections.is_empty() {
+    //             found_dangling = true;
+    //             agent.genome.nodes.remove(i);
+    //             num_nodes -= 1;
+    //             for (j, node) in agent.genome.nodes.iter_mut().enumerate() {
+    //                 node.connections.retain(|con| con.0 != i);
+    //                 for con in node.connections.iter_mut() {
+    //                     if con.0 > j {
+    //                         con.0 -= 1;
+    //                     }
+    //                 }
+    //             }
+    //             break;
+    //         }
+    //     }
+    //     if !found_dangling {
+    //         break;
+    //     }
+    //     found_dangling = false;
+    // }
+
+    agent.genome.build();
 
     return agent;
 }
 
-fn test_genome() {
-    let mut nodes: Vec<Node> = Vec::with_capacity(10);
+// fn test_genome() {
+//     let mut nodes: Vec<Node> = Vec::with_capacity(10);
 
-    for _ in 0..nodes.capacity() {
-        let mut node = Node::new();
-        node.activation_function = ActivationFunction::Tanh;
-        nodes.push(node);
-    }
+//     for _ in 0..nodes.capacity() {
+//         let mut node = Node::new();
+//         node.activation_function = ActivationFunction::Tanh;
+//         nodes.push(node);
+//     }
 
-    nodes[0].connections.append(&mut vec![(6, 1.0), (8, 1.0)]);
-    nodes[1].connections.append(&mut vec![(8, 1.0)]);
-    nodes[2].connections.append(&mut vec![(9, 1.0)]);
-    nodes[3].connections.append(&mut vec![(8, 1.0), (9, 1.0)]);
-    nodes[4].connections.append(&mut vec![]);
-    nodes[5].connections.append(&mut vec![]);
-    nodes[6].connections.append(&mut vec![(4, 1.0)]);
-    nodes[7].connections.append(&mut vec![(4, 1.0), (5, 1.0)]);
-    nodes[8].connections.append(&mut vec![(6, 1.0), (7, 1.0), (9, 1.0)]);
-    nodes[9].connections.append(&mut vec![(4, 1.0), (5, 1.0)]);
+//     nodes[0].connections.append(&mut vec![(6, 1.0), (8, 1.0)]);
+//     nodes[1].connections.append(&mut vec![(8, 1.0)]);
+//     nodes[2].connections.append(&mut vec![(9, 1.0)]);
+//     nodes[3].connections.append(&mut vec![(8, 1.0), (9, 1.0)]);
+//     nodes[4].connections.append(&mut vec![]);
+//     nodes[5].connections.append(&mut vec![]);
+//     nodes[6].connections.append(&mut vec![(4, 1.0)]);
+//     nodes[7].connections.append(&mut vec![(4, 1.0), (5, 1.0)]);
+//     nodes[8].connections.append(&mut vec![(6, 1.0), (7, 1.0), (9, 1.0)]);
+//     nodes[9].connections.append(&mut vec![(4, 1.0), (5, 1.0)]);
 
-    let output_nodes: Vec<usize> = vec![4, 5];
+//     let output_nodes: Vec<usize> = vec![4, 5];
 
-    let mut genome = Genome::new(nodes, output_nodes);
+//     let mut genome = Genome::new(nodes, output_nodes);
 
-    genome.set_node_value(0, 1.0);
-    genome.set_node_value(1, 1.0);
-    genome.set_node_value(2, 1.0);
-    genome.set_node_value(3, 1.0);
+//     genome.set_node_value(0, 1.0);
+//     genome.set_node_value(1, 1.0);
+//     genome.set_node_value(2, 1.0);
+//     genome.set_node_value(3, 1.0);
     
-    genome.traverse();
-}
+//     genome.traverse();
+// }

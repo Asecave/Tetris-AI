@@ -5,6 +5,7 @@ pub struct Agent {
     pub genome: Genome,
     pub game: ChasePoint,
     pub fitness: f32,
+    pub frames_on_point: u32,
 }
 
 impl Agent {
@@ -15,6 +16,7 @@ impl Agent {
             genome: game.create_base_genome(),
             game,
             fitness: 0.0,
+            frames_on_point: 0,
         }
     }
 
@@ -29,12 +31,20 @@ impl Agent {
         self.fitness = self.fitness_function();
     }
 
-    fn fitness_function(&self) -> f32 {
+    fn fitness_function(&mut self) -> f32 {
         let mut fitness = 1.0 / (self.game.target_distance2() + 1.0);
-        fitness *= f32::powf(0.5, f32::abs(self.game.vel_x) + f32::abs(self.game.vel_y)); 
-        if self.game.total_distance > 2.0 {
+        // fitness *= f32::powf(0.5, f32::abs(self.game.vel_x) + f32::abs(self.game.vel_y));
+        if self.game.total_distance > 3.0 {
             fitness /= self.game.total_distance;
         }
-        fitness
+        if fitness > 0.9999 {
+            self.frames_on_point += 1;
+        } else {
+            self.frames_on_point = 0;
+        }
+        if self.frames_on_point > 100 {
+            fitness += 10.0;
+        }
+        self.fitness + fitness
     }
 }
