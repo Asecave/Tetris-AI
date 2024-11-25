@@ -11,8 +11,8 @@ use agent::Agent;
 use rand::{thread_rng, Rng};
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
-pub const NUM_AGENTS: u32 = 10000;
-pub const FRAMES_PER_GEN: u32 = 100;
+pub const NUM_AGENTS: usize = 1000;
+pub const FRAMES_PER_GEN: u32 = 1000;
 pub const MAX_NODES: u32 = 10;
 pub const MAX_EDGES: u32 = 10;
 
@@ -55,7 +55,7 @@ async fn main() {
 
 fn generation(ui_shared: &Arc<Mutex<UIShared>>) {
 
-    let mut population: Vec<Agent> = Vec::with_capacity(500);
+    let mut population: Vec<Agent> = Vec::with_capacity(NUM_AGENTS);
 
     for _ in 0..population.capacity() {
         population.push(Agent::new());
@@ -125,16 +125,16 @@ fn select_and_mutate(population: &mut Vec<Agent>) -> Vec<Agent> {
     let move_straight_to_next_gen = (population.len() as f32 * 0.1) as usize;
     let selection_probability = 1.0 / (population.len() as f32 * 0.6);
 
-    let (next_generation, remaining) = population.split_at(move_straight_to_next_gen);
+    let next_generation = population.split_at(move_straight_to_next_gen).0;
     let mut next_generation = next_generation.to_vec();
 
     let mut i = 0;
     while next_generation.len() < population.len() {
         if thread_rng().gen::<f32>() < selection_probability {
-            next_generation.push(mutate_agent(remaining[i].clone()));
+            next_generation.push(mutate_agent(population[i].clone()));
         }
         
-        i = (i + 1) % remaining.len();
+        i = (i + 1) % population.len();
     }
 
     return next_generation;
