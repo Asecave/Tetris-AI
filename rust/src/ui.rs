@@ -1,9 +1,10 @@
-use std::sync::{Arc, Mutex};
+use std::{collections::HashMap, sync::{Arc, Mutex}};
 
 use macroquad::prelude::*;
 use miniquad::window::set_window_size;
+use petgraph::{graph::NodeIndex, visit::EdgeRef, Direction::{Incoming, Outgoing}};
 
-use crate::{game::chase_point::ChasePoint, genome::Genome, UIShared, FRAMES_PER_GEN};
+use crate::{game::chase_point::ChasePoint, genome::{Genome, Node}, UIShared, FRAMES_PER_GEN};
 
 pub async fn open_ui(ui_shared: Arc<Mutex<UIShared>>) {
 
@@ -75,86 +76,135 @@ fn draw_genome(genome : &Genome, x: f32, y: f32) {
     const SPACING_X: f32 = 100.0;
     const SPACING_Y: f32 = 80.0;
 
-    let mut node_positions: Vec<(f32, f32)> = Vec::new();
-    node_positions.resize(genome.nodes.len(), Default::default());
+    // convert the node layers to actual positions on the screen
+    let mut node_positions: Vec<(f32, f32, NodeIndex)> = Vec::new();
 
-    let mut node_counts_per_layer: Vec<u32> = Vec::new();
-    node_counts_per_layer.resize(genome.layer_count as usize, Default::default());
-
-    for (i, node) in genome.nodes.iter().enumerate() {
-
-        node_positions[i].0 = node.layer as f32 * SPACING_X + x;
-
-        let layer_node_count = &mut node_counts_per_layer[node.layer as usize];
-        node_positions[i].1 = *layer_node_count as f32 * SPACING_Y + y;
-        *layer_node_count += 1;
+    let mut layers: HashMap<i32, i32> = HashMap::new();
+    for node in genome.graph.node_indices() {
+        let node_layer = genome.graph.node_weight(node).unwrap().layer;
+        let nx: f32 = SPACING_X * node_layer as f32 + x;
+        let ny: f32 = SPACING_Y * *layers.entry(node_layer).or_insert(0) as f32 + y;
+        *layers.entry(node_layer).or_insert(0) += 1;
+        node_positions.push((nx, ny, node));
     }
 
-    // Make columns of Nodes vertically centered
-    let largest_column = node_counts_per_layer.iter().copied().fold(0, u32::max);
-    for (i, node) in genome.nodes.iter().enumerate() {
-        node_positions[i].1 -= ((largest_column - 1) as f32 * SPACING_Y) / 2.0;
-        if node_counts_per_layer[node.layer as usize] == largest_column {
-            continue;
-        }
-        node_positions[i].1 += (largest_column as f32 * SPACING_Y) / 2.0 - (node_counts_per_layer[node.layer as usize] as f32 * SPACING_Y) / 2.0;
+    // finding layers for centering
+    let mut layers: HashMap<i32, i32> = HashMap::new();
+    for node in genome.graph.node_weights() {
+        *layers.entry(node.layer).or_insert(0) += 1;
+    }
+
+    // Center vertically
+    for (_, y, node) in node_positions.iter_mut() {
+        *y -= (layers.get(&genome.graph.node_weight(*node).unwrap().layer).unwrap() - 1) as f32 * SPACING_Y / 2.0;
     }
 
     // Center horizontally
-    let offset = ((genome.layer_count - 1) as f32 * SPACING_X) / 2.0;
-    for i in 0..node_positions.len() {
-        node_positions[i].0 -= offset;
+    for (x, _, _) in node_positions.iter_mut() {
+        *x -= (layers.len() - 1) as f32 * SPACING_X / 2.0;
     }
 
-    // Actual drawing
-    for draw_circles in 0..=1 {
-        for (i, node) in genome.nodes.iter().enumerate() {
-            if draw_circles == 1 {
-                draw_circle(
-                    node_positions[i].0,
-                    node_positions[i].1,
-                    25.0,
-                    Color::new(
-                        0.0,
-                        f32::max(0.0, node.value),
-                        f32::max(0.0, -node.value),
-                        1.0
-                    )
-                );
-                draw_circle_lines(
-                    node_positions[i].0,
-                    node_positions[i].1,
-                    25.0,
-                    -5.0,
-                    if genome.output_nodes.contains(&i) {WHITE} else {BLACK}
-                );
-            } else {
-                for (connection, weight) in &node.connections {
-                    draw_line(
-                        node_positions[i].0,
-                        node_positions[i].1,
-                        node_positions[*connection as usize].0,
-                        node_positions[*connection as usize].1,
-                        12.0,
-                        BLACK
-                    );
-                    draw_line(
-                        node_positions[i].0,
-                        node_positions[i].1,
-                        node_positions[*connection as usize].0,
-                        node_positions[*connection as usize].1,
-                        6.0,
-                        Color::new(
-                            0.0,
-                            f32::max(0.0, *weight),
-                            f32::max(0.0, -*weight),
-                            1.0
-                        )
-                    );
-                }
-            }
+    // draw connections
+    for (nx, ny, node) in node_positions.iter() {
+        for edge in genome.graph.edges_directed(*node, Outgoing) {
+            let (ox, oy, _) = node_positions.iter().find(|(_, _, n)| *n == edge.target()).unwrap();
+            
+            draw_line(
+                *nx,
+                *ny,
+                *ox,
+                *oy,
+                12.0,
+                BLACK
+            );
+            draw_line(
+                *nx,
+                *ny,
+                *ox,
+                *oy,
+                6.0,
+                Color::new(
+                    f32::max(0.0, *edge.weight()),
+                    f32::max(0.0, *edge.weight()),
+                    f32::max(0.0, f32::abs(*edge.weight())),
+                    1.0
+                )
+            );
         }
     }
+
+    // draw the nodes
+    for (x, y, node) in node_positions.iter() {
+        let weight: f32 = genome.graph.node_weight(*node).unwrap().value;
+        let color = Color::new(
+            f32::max(0.0, weight),
+            f32::max(0.0, weight),
+            f32::max(0.0, f32::abs(weight)),
+            1.0
+        );
+        draw_circle(*x, *y, 25.0, color);
+        draw_circle_lines(*x, *y, 25.0, -5.0, if genome.output_nodes.contains(&node) {WHITE} else {BLACK});
+    }
+
+    // Center vertically
+    // for (_, y) in node_positions.iter_mut() {
+    //     *y += (largest_column - 1.0) * SPACING_Y / 2.0 - ((layers[*layer as usize] as f32 - 1.0) * SPACING_Y / 2.0);
+    // }
+
+    // Center horizontally
+    // for (x, _) in node_positions.iter_mut() {
+    //     *x += (largest_column - 1.0) * SPACING_X / 2.0;
+    // }
+
+    // Actual drawing
+    // for draw_circles in 0..=1 {
+    //     for (x, y, node) in node_positions.iter() {
+    //         if draw_circles == 1 {
+    //             draw_circle(
+    //                 *x,
+    //                 *y,
+    //                 25.0,
+    //                 Color::new(
+    //                     0.0,
+    //                     f32::max(0.0, genome.graph.node_weight(*node).unwrap().0),
+    //                     f32::max(0.0, -genome.graph.node_weight(*node).unwrap().0),
+    //                     1.0
+    //                 )
+    //             );
+    //             draw_circle_lines(
+    //                 *x,
+    //                 *y,
+    //                 25.0,
+    //                 -5.0,
+    //                 if genome.output_nodes.contains(node) {WHITE} else {BLACK}
+    //             );
+    //         } else {
+    //             for (connection, weight) in &node.connections {
+    //                 draw_line(
+    //                     node_positions[i].0,
+    //                     node_positions[i].1,
+    //                     node_positions[*connection as usize].0,
+    //                     node_positions[*connection as usize].1,
+    //                     12.0,
+    //                     BLACK
+    //                 );
+    //                 draw_line(
+    //                     node_positions[i].0,
+    //                     node_positions[i].1,
+    //                     node_positions[*connection as usize].0,
+    //                     node_positions[*connection as usize].1,
+    //                     6.0,
+    //                     Color::new(
+    //                         0.0,
+    //                         f32::max(0.0, *weight),
+    //                         f32::max(0.0, -*weight),
+    //                         1.0
+    //                     )
+    //                 );
+    //             }
+    //         }
+    //     }
+    // }
 }
 
 pub fn rect(x: f32, y: f32, w: f32, h: f32, color: Color) {

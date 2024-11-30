@@ -1,6 +1,7 @@
+use petgraph::graph::{DiGraph, NodeIndex};
 use rand::{thread_rng, Rng};
 
-use crate::genome::{ActivationFunction, Genome, Node};
+use crate::genome::{Genome, Node, NodeType};
 
 use super::Game;
 
@@ -50,24 +51,42 @@ impl ChasePoint {
 
 impl Game for ChasePoint {
     fn create_base_genome(&self) -> Genome {
-        let mut nodes: Vec<Node> = Vec::with_capacity(6);
+        let mut graph: petgraph::Graph<Node, f32> = DiGraph::new();
+        let mut input_nodes: Vec<NodeIndex> = Vec::new();
+        let mut output_nodes: Vec<NodeIndex> = Vec::new();
 
-        for _ in 0..nodes.capacity() {
-            let mut node = Node::new();
-            node.activation_function = ActivationFunction::Tanh;
-            nodes.push(node);
+        let mut input_index = 0;
+        let mut output_index = 0;
+        for i in 0..6 {
+            if i < 4 {
+                let index = graph.add_node(Node {
+                    value: 0.0,
+                    bias: 0.0,
+                    node_type: NodeType::Input(input_index),
+                    layer: 0,
+                });
+                input_nodes.push(index);
+                input_index += 1;
+            } else {
+                let index = graph.add_node(Node {
+                    value: 0.0,
+                    bias: 0.0,
+                    node_type: NodeType::Output(output_index),
+                    layer: 1,
+                });
+                output_nodes.push(index);
+                output_index += 1;
+            }
         }
 
-        let output_nodes = vec![4, 5];
-
-        return Genome::new(nodes, output_nodes);
+        return Genome::new(graph, input_nodes, output_nodes);
     }
 
     fn set_input_node_values(&self, genome: &mut Genome) {
-        genome.set_node_value(0, self.point_x);
-        genome.set_node_value(1, self.point_y);
-        genome.set_node_value(2, self.player_x);
-        genome.set_node_value(3, self.player_y);
+        genome.graph.node_weight_mut(genome.input_nodes[0]).unwrap().value = self.point_x;
+        genome.graph.node_weight_mut(genome.input_nodes[1]).unwrap().value = self.point_y;
+        genome.graph.node_weight_mut(genome.input_nodes[2]).unwrap().value = self.player_x;
+        genome.graph.node_weight_mut(genome.input_nodes[3]).unwrap().value = self.player_y;
     }
     
     fn update(&mut self) {

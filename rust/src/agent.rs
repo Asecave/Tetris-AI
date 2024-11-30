@@ -1,4 +1,6 @@
-use crate::{game::{chase_point::ChasePoint, Game}, genome::Genome};
+use petgraph::visit::IntoNodeReferences;
+
+use crate::{game::{chase_point::ChasePoint, Game}, genome::{Genome, NodeType}};
 
 #[derive(Clone)]
 pub struct Agent {
@@ -23,9 +25,9 @@ impl Agent {
     pub fn play(&mut self) {
 
         self.game.set_input_node_values(&mut self.genome);
-        let output = self.genome.traverse();
-        self.game.move_x(output[0]);
-        self.game.move_y(output[1]);
+        self.genome.traverse();
+        self.game.move_x(self.genome.graph.node_weight(self.genome.output_nodes[0]).unwrap().value);
+        self.game.move_y(self.genome.graph.node_weight(self.genome.output_nodes[1]).unwrap().value);
         self.game.update();
 
         self.fitness = self.fitness_function();
@@ -46,5 +48,28 @@ impl Agent {
             fitness += 10.0;
         }
         self.fitness + fitness
+    }
+
+    pub fn clone_and_keep_io_nodes(&self) -> Self {
+        let mut a = self.clone();
+        let number_of_inputs = a.genome.input_nodes.len();
+        let number_of_outputs = a.genome.output_nodes.len();
+        a.genome.input_nodes = Vec::new();
+        a.genome.output_nodes = Vec::new();
+        while a.genome.input_nodes.len() < number_of_inputs {
+            for (index, node) in a.genome.graph.node_references() {
+                if node.node_type == NodeType::Input(a.genome.input_nodes.len() as u32) {
+                    a.genome.input_nodes.push(index);
+                }
+            }
+        }
+        while a.genome.output_nodes.len() < number_of_outputs {
+            for (index, node) in a.genome.graph.node_references() {
+                if node.node_type == NodeType::Output(a.genome.output_nodes.len() as u32) {
+                    a.genome.output_nodes.push(index);
+                }
+            }
+        }
+        a
     }
 }
