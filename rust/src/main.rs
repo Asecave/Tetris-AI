@@ -8,6 +8,7 @@ use std::{sync::{Arc, Mutex}, thread, time::{Duration, SystemTime, UNIX_EPOCH}};
 use game::chase_point::ChasePoint;
 use agent::Agent;
 use genome::{Node, NodeType};
+use petgraph::graph::NodeIndex;
 use rand::{seq::IteratorRandom, thread_rng, Rng};
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
@@ -101,6 +102,8 @@ fn evaluation(population: &mut Vec<Agent>, ui_shared: &Arc<Mutex<UIShared>>) {
         agent.fitness = 0.0;
     }
 
+    let display_agent = 0;
+
     for current_frame in 0..FRAMES_PER_GEN {
 
         if USE_PARALLELISM {
@@ -112,9 +115,9 @@ fn evaluation(population: &mut Vec<Agent>, ui_shared: &Arc<Mutex<UIShared>>) {
         // Update ui
         if SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() - last_ui_update >= 1000 / 144 {
             let mut ui_shared = ui_shared.lock().unwrap();
-            ui_shared.agent = Some(population[0].clone());
+            ui_shared.agent = Some(population[display_agent].clone());
             ui_shared.current_frame = current_frame;
-            ui_shared.current_fitness = population[0].fitness;
+            ui_shared.current_fitness = population[display_agent].fitness;
             last_ui_update = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
             sleep_time = ui_shared.sleep_time;
         }
@@ -217,7 +220,6 @@ fn mutate_agent(mut agent: Agent) -> Agent {
             }
 
             agent.genome.graph.update_edge(first_node, second_node, thread_rng().gen_range(-1.0..1.0));
-            agent.genome.sort_topological();
         } else if agent.genome.graph.edge_count() > 0 {
             // remove connection
             let random_edge = agent.genome.graph.edge_indices().choose(&mut thread_rng()).unwrap();

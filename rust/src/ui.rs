@@ -2,9 +2,9 @@ use std::{collections::HashMap, sync::{Arc, Mutex}};
 
 use macroquad::prelude::*;
 use miniquad::window::set_window_size;
-use petgraph::{graph::NodeIndex, visit::EdgeRef, Direction::{Incoming, Outgoing}};
+use petgraph::{graph::NodeIndex, visit::EdgeRef, Direction::Outgoing};
 
-use crate::{game::chase_point::ChasePoint, genome::{Genome, Node}, UIShared, FRAMES_PER_GEN};
+use crate::{game::chase_point::ChasePoint, genome::Genome, UIShared, FRAMES_PER_GEN};
 
 pub async fn open_ui(ui_shared: Arc<Mutex<UIShared>>) {
 

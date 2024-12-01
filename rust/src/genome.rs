@@ -91,6 +91,13 @@ impl Genome {
 
     pub fn traverse(&mut self) {
 
+        // reset node values
+        for index in self.topological_order.iter() {
+            if !self.input_nodes.contains(index) {
+                self.graph.node_weight_mut(*index).unwrap().value = 0.0;
+            }
+        }
+
         for index in self.topological_order.iter() {
             
             let mut node = *self.graph.node_weight(*index).unwrap();
