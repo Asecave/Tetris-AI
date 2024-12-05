@@ -27,11 +27,18 @@ pub async fn open_ui(ui_shared: Arc<Mutex<UIShared>>) {
         }
         if let Some(ui) = previous_ui.clone() {
             let mut total_dst = 0.0;
-            if let Some(agent) = &ui.agent {
-                draw_genome(&agent.genome, screen_width() / 2.0, screen_height() / 2.0 + 200.0);
-                draw_game(&agent.game, screen_width() / 2.0, screen_height() / 2.0 - 250.0);
+            if let Some(population) = &ui.population {
+                draw_genome(&population[0].genome, screen_width() / 2.0, screen_height() / 2.0 + 200.0);
 
-                total_dst = agent.game.total_distance;
+                let x = screen_width() / 2.0;
+                let y = screen_height() / 2.0 - 250.0;
+                draw_game_board(&population[0].game, x, y);
+                for agent in population.iter() {
+                    draw_agent(&agent.game, x, y);
+                }
+                draw_circle(&population[0].game.player_x * 200.0 + x, &population[0].game.player_y * 200.0 + y, 4.0, GREEN);
+
+                total_dst = population[0].game.total_distance;
             }
             let mut info_text = String::new();
 
@@ -65,10 +72,15 @@ pub async fn open_ui(ui_shared: Arc<Mutex<UIShared>>) {
     }
 }
 
-fn draw_game(game: &ChasePoint, x: f32, y: f32) {
+fn draw_game_board(game: &ChasePoint, x: f32, y: f32) {
     draw_rectangle(x - 200.0, y - 200.0, 400.0, 400.0, BLACK);
     draw_rectangle(game.point_x * 200.0 + (x - 5.0), game.point_y * 200.0 + (y - 5.0), 10.0, 10.0, RED);
-    draw_circle(game.player_x * 200.0 + x, game.player_y * 200.0 + y, 4.0, SKYBLUE);
+}
+
+fn draw_agent(game: &ChasePoint, x: f32, y: f32) {
+    let mut color = SKYBLUE;
+    color.a = 0.25;
+    draw_circle(game.player_x * 200.0 + x, game.player_y * 200.0 + y, 4.0, color);
 }
 
 fn draw_genome(genome : &Genome, x: f32, y: f32) {

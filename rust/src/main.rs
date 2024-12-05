@@ -17,9 +17,9 @@ pub const MAX_NODES: u32 = 8;
 pub const MAX_EDGES: u32 = 8;
 pub const USE_PARALLELISM: bool = true;
 
-#[derive(Clone)]
+#[derive(Clone, Default)]
 struct UIShared {
-    agent: Option<Agent>,
+    population: Option<Vec<Agent>>,
     generation: u32,
     best_fitness: f32,
     current_frame: u32,
@@ -35,16 +35,8 @@ struct UIShared {
 async fn main() {
     // test_genome();
 
-    let ui_shared = UIShared {
-        agent: None,
-        generation: 0,
-        best_fitness: 0.0,
-        current_frame: 0,
-        current_fitness: 0.0,
-        last_evaluation_time: 0,
-        last_selection_mutation_time: 0,
-        sleep_time: 10,
-    };
+    let mut ui_shared = UIShared::default();
+    ui_shared.sleep_time = 10;
     let ui_shared_ref: Arc<Mutex<UIShared>> = Arc::new(Mutex::new(ui_shared));
 
     let ui_shared_ref_1 = Arc::clone(&ui_shared_ref);
@@ -84,8 +76,12 @@ fn evolution(ui_shared: &Arc<Mutex<UIShared>>) {
         population = select_and_mutate(&mut population);
         last_selection_mutation_time = SystemTime::now().duration_since(start).unwrap().as_millis();
 
+        let target_x = thread_rng().gen_range(-1.0..1.0);
+        let target_y = thread_rng().gen_range(-1.0..1.0);
         for agent in population.iter_mut() {
             agent.game = ChasePoint::new();
+            agent.game.point_x = target_x;
+            agent.game.point_y = target_y;
         }
 
         generation += 1;
@@ -114,7 +110,7 @@ fn evaluation(population: &mut Vec<Agent>, ui_shared: &Arc<Mutex<UIShared>>) {
         // Update ui
         if SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() - last_ui_update >= 1000 / 144 {
             let mut ui_shared = ui_shared.lock().unwrap();
-            ui_shared.agent = Some(population[display_agent].clone());
+            ui_shared.population = Some(population.clone());
             ui_shared.current_frame = current_frame;
             ui_shared.current_fitness = population[display_agent].fitness;
             last_ui_update = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
