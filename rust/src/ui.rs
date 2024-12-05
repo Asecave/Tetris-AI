@@ -145,66 +145,6 @@ fn draw_genome(genome : &Genome, x: f32, y: f32) {
         draw_circle(*x, *y, 25.0, color);
         draw_circle_lines(*x, *y, 25.0, -5.0, if genome.output_nodes.contains(&node) {WHITE} else {BLACK});
     }
-
-    // Center vertically
-    // for (_, y) in node_positions.iter_mut() {
-    //     *y += (largest_column - 1.0) * SPACING_Y / 2.0 - ((layers[*layer as usize] as f32 - 1.0) * SPACING_Y / 2.0);
-    // }
-
-    // Center horizontally
-    // for (x, _) in node_positions.iter_mut() {
-    //     *x += (largest_column - 1.0) * SPACING_X / 2.0;
-    // }
-
-    // Actual drawing
-    // for draw_circles in 0..=1 {
-    //     for (x, y, node) in node_positions.iter() {
-    //         if draw_circles == 1 {
-    //             draw_circle(
-    //                 *x,
-    //                 *y,
-    //                 25.0,
-    //                 Color::new(
-    //                     0.0,
-    //                     f32::max(0.0, genome.graph.node_weight(*node).unwrap().0),
-    //                     f32::max(0.0, -genome.graph.node_weight(*node).unwrap().0),
-    //                     1.0
-    //                 )
-    //             );
-    //             draw_circle_lines(
-    //                 *x,
-    //                 *y,
-    //                 25.0,
-    //                 -5.0,
-    //                 if genome.output_nodes.contains(node) {WHITE} else {BLACK}
-    //             );
-    //         } else {
-    //             for (connection, weight) in &node.connections {
-    //                 draw_line(
-    //                     node_positions[i].0,
-    //                     node_positions[i].1,
-    //                     node_positions[*connection as usize].0,
-    //                     node_positions[*connection as usize].1,
-    //                     12.0,
-    //                     BLACK
-    //                 );
-    //                 draw_line(
-    //                     node_positions[i].0,
-    //                     node_positions[i].1,
-    //                     node_positions[*connection as usize].0,
-    //                     node_positions[*connection as usize].1,
-    //                     6.0,
-    //                     Color::new(
-    //                         0.0,
-    //                         f32::max(0.0, *weight),
-    //                         f32::max(0.0, -*weight),
-    //                         1.0
-    //                     )
-    //                 );
-    //             }
-    //         }
-    //     }
-    // }
 }
 
 pub fn rect(x: f32, y: f32, w: f32, h: f32, color: Color) {

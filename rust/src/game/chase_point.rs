@@ -20,15 +20,17 @@ impl ChasePoint {
     pub fn new() -> Self {
         // let pos_x = 0.9;//if thread_rng().gen_bool(0.5) {-0.9} else {0.9};
         // let pos_y = 0.9;//if thread_rng().gen_bool(0.5) {-0.9} else {0.9};
-        let angle = thread_rng().gen_range(0.0..2.0 * std::f32::consts::PI);
-        let distance = 1.0;
-        let pos_x = distance * f32::cos(angle);
-        let pos_y = distance * f32::sin(angle);
+        // let angle = thread_rng().gen_range(0.0..2.0 * std::f32::consts::PI);
+        // let distance = 1.0;
+        // let pos_x = distance * f32::cos(angle);
+        // let pos_y = distance * f32::sin(angle);
+        let pos_x = thread_rng().gen_range(-1.0..1.0);
+        let pos_y = thread_rng().gen_range(-1.0..1.0);
         Self {
-            point_x: 0.0,
-            point_y: 0.0,
-            player_x: pos_x,
-            player_y: pos_y,
+            point_x: pos_x,
+            point_y: pos_y,
+            player_x: 0.0,
+            player_y: 0.0,
             vel_x: 0.0,
             vel_y: 0.0,
             total_distance: 0.0,

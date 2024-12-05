@@ -36,7 +36,7 @@ impl Agent {
     fn fitness_function(&mut self) -> f32 {
         let mut fitness = 1.0 / (self.game.target_distance2() + 1.0);
         // fitness *= f32::powf(0.5, f32::abs(self.game.vel_x) + f32::abs(self.game.vel_y));
-        if self.game.total_distance > 3.0 {
+        if self.game.total_distance > 5.0 {
             fitness /= self.game.total_distance;
         }
         if fitness > 0.9999 {

@@ -8,7 +8,6 @@ use std::{sync::{Arc, Mutex}, thread, time::{Duration, SystemTime, UNIX_EPOCH}};
 use game::chase_point::ChasePoint;
 use agent::Agent;
 use genome::{Node, NodeType};
-use petgraph::graph::NodeIndex;
 use rand::{seq::IteratorRandom, thread_rng, Rng};
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
 
@@ -16,7 +15,7 @@ pub const NUM_AGENTS: usize = 1000;
 pub const FRAMES_PER_GEN: u32 = 1000;
 pub const MAX_NODES: u32 = 8;
 pub const MAX_EDGES: u32 = 8;
-pub const USE_PARALLELISM: bool = false;
+pub const USE_PARALLELISM: bool = true;
 
 #[derive(Clone)]
 struct UIShared {
