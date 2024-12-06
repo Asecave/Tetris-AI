@@ -2,20 +2,16 @@ mod genome;
 mod agent;
 mod game;
 mod ui;
+mod config;
 
-use std::{sync::{Arc, Mutex}, thread, time::{Duration, SystemTime, UNIX_EPOCH}};
+use std::{collections::HashSet, sync::{Arc, Mutex}, thread, time::{Duration, SystemTime, UNIX_EPOCH}};
 
-use game::chase_point::ChasePoint;
 use agent::Agent;
+use game::Game;
 use genome::{Node, NodeType};
+use macroquad::input::KeyCode;
 use rand::{seq::IteratorRandom, thread_rng, Rng};
 use rayon::iter::{IntoParallelRefMutIterator, ParallelIterator};
-
-pub const NUM_AGENTS: usize = 1000;
-pub const FRAMES_PER_GEN: u32 = 1000;
-pub const MAX_NODES: u32 = 8;
-pub const MAX_EDGES: u32 = 8;
-pub const USE_PARALLELISM: bool = true;
 
 #[derive(Clone, Default)]
 struct UIShared {
@@ -26,17 +22,19 @@ struct UIShared {
     current_fitness: f32,
     last_evaluation_time: u128,
     last_selection_mutation_time: u128,
-
-    // User Input
+    mutation_probability: f64,
     sleep_time: u64,
+    keyboard_input: HashSet<KeyCode>,
 }
 
 #[macroquad::main("AI")]
 async fn main() {
     // test_genome();
 
-    let mut ui_shared = UIShared::default();
-    ui_shared.sleep_time = 10;
+    let ui_shared = UIShared {
+        sleep_time: 10,
+        ..Default::default()
+    };
     let ui_shared_ref: Arc<Mutex<UIShared>> = Arc::new(Mutex::new(ui_shared));
 
     let ui_shared_ref_1 = Arc::clone(&ui_shared_ref);
@@ -48,13 +46,14 @@ async fn main() {
 
 fn evolution(ui_shared: &Arc<Mutex<UIShared>>) {
 
-    let mut population: Vec<Agent> = Vec::with_capacity(NUM_AGENTS);
+    let mut population: Vec<Agent> = Vec::with_capacity(config::NUM_AGENTS);
 
     for _ in 0..population.capacity() {
         population.push(Agent::new());
     }
 
     let mut generation = 0;
+    let mutation_probability = 1.0;
     let mut last_evaluation_time = 0;
     let mut last_selection_mutation_time = 0;
 
@@ -66,6 +65,7 @@ fn evolution(ui_shared: &Arc<Mutex<UIShared>>) {
             ui_shared.best_fitness = population[0].fitness;
             ui_shared.last_evaluation_time = last_evaluation_time;
             ui_shared.last_selection_mutation_time = last_selection_mutation_time;
+            ui_shared.mutation_probability = mutation_probability;
         }
 
         let start = SystemTime::now();
@@ -73,15 +73,15 @@ fn evolution(ui_shared: &Arc<Mutex<UIShared>>) {
         last_evaluation_time = SystemTime::now().duration_since(start).unwrap().as_millis();
 
         let start = SystemTime::now();
-        population = select_and_mutate(&mut population);
+        population = select_and_mutate(&mut population, mutation_probability);
         last_selection_mutation_time = SystemTime::now().duration_since(start).unwrap().as_millis();
 
-        let target_x = thread_rng().gen_range(-1.0..1.0);
-        let target_y = thread_rng().gen_range(-1.0..1.0);
+        // if mutation_probability > 0.01 {
+        //     mutation_probability -= 0.001;
+        // }
+
         for agent in population.iter_mut() {
-            agent.game = ChasePoint::new();
-            agent.game.point_x = target_x;
-            agent.game.point_y = target_y;
+            agent.game = config::GAME::new();
         }
 
         generation += 1;
@@ -90,7 +90,8 @@ fn evolution(ui_shared: &Arc<Mutex<UIShared>>) {
 
 fn evaluation(population: &mut Vec<Agent>, ui_shared: &Arc<Mutex<UIShared>>) {
     let mut last_ui_update = 0;
-    let mut sleep_time: u64 = 0;
+    let mut sleep_time: u64 = ui_shared.lock().unwrap().sleep_time;
+    let mut skip_to_next_gen = false;
 
     // reset fitness
     for agent in population.iter_mut() {
@@ -99,9 +100,9 @@ fn evaluation(population: &mut Vec<Agent>, ui_shared: &Arc<Mutex<UIShared>>) {
 
     let display_agent = 0;
 
-    for current_frame in 0..FRAMES_PER_GEN {
+    for current_frame in 0..config::FRAMES_PER_GEN {
 
-        if USE_PARALLELISM {
+        if config::USE_PARALLELISM {
             population.par_iter_mut().for_each(|agent| agent.play());
         } else {
             population.iter_mut().for_each(|agent| agent.play());
@@ -110,18 +111,35 @@ fn evaluation(population: &mut Vec<Agent>, ui_shared: &Arc<Mutex<UIShared>>) {
         // Update ui
         if SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis() - last_ui_update >= 1000 / 144 {
             let mut ui_shared = ui_shared.lock().unwrap();
+
+            if ui_shared.keyboard_input.get(&KeyCode::Up).is_some() {
+                sleep_time += 10;
+            }
+            if ui_shared.keyboard_input.get(&KeyCode::Down).is_some() && sleep_time > 0 {
+                sleep_time -= 10;
+            }
+            if ui_shared.keyboard_input.get(&KeyCode::Right).is_some() {
+                skip_to_next_gen = true;
+                sleep_time = 0;
+            }
+            ui_shared.keyboard_input.clear();
+
             ui_shared.population = Some(population.clone());
             ui_shared.current_frame = current_frame;
             ui_shared.current_fitness = population[display_agent].fitness;
+            ui_shared.sleep_time = sleep_time;
+
             last_ui_update = SystemTime::now().duration_since(UNIX_EPOCH).unwrap().as_millis();
-            sleep_time = ui_shared.sleep_time;
         }
 
         thread::sleep(Duration::from_millis(sleep_time));
     }
+    if skip_to_next_gen {
+        ui_shared.lock().unwrap().sleep_time = 10;
+    }
 }
 
-fn select_and_mutate(population: &mut Vec<Agent>) -> Vec<Agent> {
+fn select_and_mutate(population: &mut Vec<Agent>, mutation_probability: f64) -> Vec<Agent> {
 
     population.sort_by(|a, b| b.fitness.partial_cmp(&a.fitness).unwrap());
 
@@ -134,7 +152,7 @@ fn select_and_mutate(population: &mut Vec<Agent>) -> Vec<Agent> {
     let mut i = 0;
     while next_generation.len() < population.len() {
         if thread_rng().gen::<f32>() < selection_probability {
-            next_generation.push(mutate_agent(population[i].clone_and_keep_io_nodes()));
+            next_generation.push(mutate_agent(population[i].clone_and_keep_io_nodes(), mutation_probability));
         }
         
         i = (i + 1) % population.len();
@@ -143,13 +161,13 @@ fn select_and_mutate(population: &mut Vec<Agent>) -> Vec<Agent> {
     return next_generation;
 }
 
-fn mutate_agent(mut agent: Agent) -> Agent {
+fn mutate_agent(mut agent: Agent, mutation_probability: f64) -> Agent {
 
-    if thread_rng().gen_bool(0.25) {
+    if thread_rng().gen_bool(0.25 * mutation_probability) {
         if thread_rng().gen_bool(0.5) {
             // mutate bias
             let random_node = agent.genome.graph.node_indices().choose(&mut thread_rng()).unwrap();
-            if thread_rng().gen_bool(0.25) {
+            if thread_rng().gen_bool(0.25 * mutation_probability) {
                 // big change
                 agent.genome.graph.node_weight_mut(random_node).unwrap().bias += thread_rng().gen_range(-1.0..1.0);
             } else {
@@ -159,7 +177,7 @@ fn mutate_agent(mut agent: Agent) -> Agent {
         } else if agent.genome.graph.edge_count() > 0 {
             // mutate weight
             let random_edge = agent.genome.graph.edge_indices().choose(&mut thread_rng()).unwrap();
-            if thread_rng().gen_bool(0.25) {
+            if thread_rng().gen_bool(0.25 * mutation_probability) {
                 // big change
                 *agent.genome.graph.edge_weight_mut(random_edge).unwrap() += thread_rng().gen_range(-1.0..1.0);
             } else {
@@ -169,7 +187,7 @@ fn mutate_agent(mut agent: Agent) -> Agent {
         }
     }
 
-    if agent.genome.graph.node_count() < MAX_NODES as usize && agent.genome.graph.edge_count() > 0 && thread_rng().gen_bool(0.02) {
+    if agent.genome.graph.node_count() < config::MAX_NODES as usize && agent.genome.graph.edge_count() > 0 && thread_rng().gen_bool(0.2 * mutation_probability) {
         if thread_rng().gen_bool(0.5) {
             // new node
             let random_edge = agent.genome.graph.edge_indices().choose(&mut thread_rng()).unwrap();
@@ -194,7 +212,7 @@ fn mutate_agent(mut agent: Agent) -> Agent {
     
     agent.genome.generate_layers();
 
-    if agent.genome.graph.edge_count() < MAX_EDGES as usize && thread_rng().gen_bool(0.6) {
+    if agent.genome.graph.edge_count() < config::MAX_EDGES as usize && thread_rng().gen_bool(0.2 * mutation_probability) {
         if thread_rng().gen_bool(0.5) {
             // new conenction
             let mut first_node;

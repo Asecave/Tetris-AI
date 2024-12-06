@@ -4,83 +4,109 @@ use macroquad::prelude::*;
 use miniquad::window::set_window_size;
 use petgraph::{graph::NodeIndex, visit::EdgeRef, Direction::Outgoing};
 
-use crate::{game::chase_point::ChasePoint, genome::Genome, UIShared, FRAMES_PER_GEN};
+use crate::{agent::Agent, config, game::Game, genome::Genome, UIShared};
 
 pub async fn open_ui(ui_shared: Arc<Mutex<UIShared>>) {
 
     set_window_size(1600, 1000);
 
     let mut previous_ui: Option<UIShared> = None;
+    let mut game_scale;
+    let mut large_game = false;
+    let mut only_draw_best = false;
+    let mut fullscreen = false;
 
     loop {
 
-        if is_key_pressed(KeyCode::Escape) {
-            break;
+        next_frame().await;
+
+        // Input
+        {
+            let mut ui = ui_shared.lock().unwrap();
+            if ui.keyboard_input.len() == 0 {
+                ui.keyboard_input = get_keys_pressed();
+            }
+            if is_key_pressed(KeyCode::F) {
+                large_game = !large_game;
+            }
+            if is_key_pressed(KeyCode::B) {
+                only_draw_best = !only_draw_best;
+            }
+            if is_key_pressed(KeyCode::Escape) {
+                break;
+            }
+            if is_key_pressed(KeyCode::F11) {
+                fullscreen = !fullscreen;
+                set_fullscreen(fullscreen);
+            }
         }
 
-        clear_background(DARKGRAY);
-
-        rect(screen_width() / 2.0 - 250.0, screen_height() / 2.0, 500.0, 400.0, LIGHTGRAY);
-
+        
+        let margin = 50.0;
+        let game_x;
+        let game_y;
+        
+        if large_game {
+            clear_background(Color::from_hex(0x222222));
+            game_scale = screen_height() * 0.5;
+            game_x = screen_width() * 0.5;
+            game_y = screen_height() * 0.5;
+        } else {
+            clear_background(DARKGRAY);
+            game_scale = screen_height() * 0.25 - margin;
+            game_x = screen_width() * 0.75;
+            game_y = screen_height() * 0.25 + margin * 0.25;
+            rect(margin, margin, screen_width() / 2.0 - margin * 1.5, screen_height() / 2.0 - margin * 1.5, LIGHTGRAY);
+            rect(margin, screen_height() / 2.0 + margin * 0.5, screen_width() / 2.0 - margin * 1.5, screen_height() / 2.0 - margin * 1.5, LIGHTGRAY);
+            rect(screen_width() / 2.0 + margin * 0.5, margin, screen_width() / 2.0 - margin * 1.5, screen_height() / 2.0 - margin * 1.5, LIGHTGRAY);
+        }
+        
         if let Ok(ui) = ui_shared.try_lock() {
             previous_ui = Some((*ui).clone());
         }
-        if let Some(ui) = previous_ui.clone() {
-            let mut total_dst = 0.0;
-            if let Some(population) = &ui.population {
-                draw_genome(&population[0].genome, screen_width() / 2.0, screen_height() / 2.0 + 200.0);
-
-                let x = screen_width() / 2.0;
-                let y = screen_height() / 2.0 - 250.0;
-                draw_game_board(&population[0].game, x, y);
-                for agent in population.iter() {
-                    draw_agent(&agent.game, x, y);
-                }
-                draw_circle(&population[0].game.player_x * 200.0 + x, &population[0].game.player_y * 200.0 + y, 4.0, GREEN);
-
-                total_dst = population[0].game.total_distance;
-            }
-            let mut info_text = String::new();
-
-            info_text.push_str(format!("Generation: {}\n", &ui.generation).as_str());
-            info_text.push_str(format!("Best fitness: {}\n", &ui.best_fitness).as_str());
-            info_text.push_str(format!("Frame: {}/{}\n", &ui.current_frame, FRAMES_PER_GEN).as_str());
-            info_text.push_str(format!("Total Distance: {}\n", total_dst).as_str());
-            info_text.push_str(format!("Current fitness: {}\n", &ui.current_fitness).as_str());
-            info_text.push_str(format!("Last evaluation time: {}ms\n", &ui.last_evaluation_time).as_str());
-            info_text.push_str(format!("Last selection & mutation time: {}ms\n", &ui.last_selection_mutation_time).as_str());
-            info_text.push_str(format!("Sleep time: {}ms\n", &ui.sleep_time).as_str());
-
-            let mut text_row_offset = 0.0;
-            for line in info_text.split("\n") {
-                draw_text(line, 50.0, text_row_offset + 50.0, 30.0, BLACK);
-                text_row_offset += 30.0;
-            }
-
-            // Input
-            if is_key_pressed(KeyCode::Down) && ui.sleep_time != 0 {
-                let mut ui = ui_shared.lock().unwrap();
-                ui.sleep_time -= 10;
-            }
-            if is_key_pressed(KeyCode::Up) {
-                let mut ui = ui_shared.lock().unwrap();
-                ui.sleep_time += 10;
-            }
+        let Some(ui) = previous_ui.clone() else {
+            continue;
+        };
+        let Some(population) = &ui.population else {
+            continue;
+        };
+        draw_game(&population, game_x, game_y, game_scale, only_draw_best);
+        if large_game {
+            continue;
         }
 
-        next_frame().await
+        draw_info_text(&ui, margin + 10.0, margin + 10.0);
+        draw_genome(&population[0].genome, screen_width() * 0.25, screen_height() * 0.75 - margin * 0.25);
     }
 }
 
-fn draw_game_board(game: &ChasePoint, x: f32, y: f32) {
-    draw_rectangle(x - 200.0, y - 200.0, 400.0, 400.0, BLACK);
-    draw_rectangle(game.point_x * 200.0 + (x - 5.0), game.point_y * 200.0 + (y - 5.0), 10.0, 10.0, RED);
+fn draw_game(population: &Vec<Agent>, x: f32, y: f32, game_scale: f32, only_draw_best: bool) {
+    population[0].game.draw_static(x, y, game_scale);
+    if !only_draw_best {
+        for agent in population.iter() {
+            agent.game.draw_dynamic(x, y, game_scale);
+        }
+    }
+    population[0].game.draw_best(x, y, game_scale);
 }
 
-fn draw_agent(game: &ChasePoint, x: f32, y: f32) {
-    let mut color = SKYBLUE;
-    color.a = 0.25;
-    draw_circle(game.player_x * 200.0 + x, game.player_y * 200.0 + y, 4.0, color);
+fn draw_info_text(ui: &UIShared, x: f32, y: f32) {
+    let mut info_text = String::new();
+
+    info_text.push_str(format!("Generation: {}\n", &ui.generation).as_str());
+    info_text.push_str(format!("Best fitness: {:.1}\n", &ui.best_fitness).as_str());
+    info_text.push_str(format!("Frame: {}/{}\n", &ui.current_frame, config::FRAMES_PER_GEN).as_str());
+    info_text.push_str(format!("Current fitness: {:.1}\n", &ui.current_fitness).as_str());
+    info_text.push_str(format!("Last evaluation time: {}ms\n", &ui.last_evaluation_time).as_str());
+    info_text.push_str(format!("Last selection & mutation time: {}ms\n", &ui.last_selection_mutation_time).as_str());
+    info_text.push_str(format!("Sleep time: {}ms\n", &ui.sleep_time).as_str());
+    info_text.push_str(format!("Mutation Probability: {:.1}%\n", &ui.mutation_probability * 100.0).as_str());
+
+    let mut text_row_offset = 0.0;
+    for line in info_text.split("\n") {
+        draw_text(line, x, text_row_offset + y + 30.0, 30.0, BLACK);
+        text_row_offset += 30.0;
+    }
 }
 
 fn draw_genome(genome : &Genome, x: f32, y: f32) {
