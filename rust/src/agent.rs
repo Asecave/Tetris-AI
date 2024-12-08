@@ -12,10 +12,9 @@ pub struct Agent {
 impl Agent {
 
     pub fn new() -> Self {
-        let game = config::GAME::new();
         Self {
-            genome: game.create_base_genome(),
-            game,
+            genome: Genome::new(config::GAME::base_genome_io()),
+            game: config::GAME::new(),
             fitness: 0.0,
         }
     }

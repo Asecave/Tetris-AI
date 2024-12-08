@@ -1,8 +1,7 @@
 use macroquad::{color::{BLACK, BLUE, GREEN, RED, SKYBLUE}, shapes::{draw_circle, draw_rectangle}};
-use petgraph::graph::{DiGraph, NodeIndex};
 use rand::{thread_rng, Rng};
 
-use crate::genome::{Genome, Node, NodeType};
+use crate::genome::Genome;
 
 use super::Game;
 
@@ -47,36 +46,8 @@ impl Game for ChasePoint {
         game
     }
     
-    fn create_base_genome(&self) -> Genome {
-        let mut graph: petgraph::Graph<Node, f32> = DiGraph::new();
-        let mut input_nodes: Vec<NodeIndex> = Vec::new();
-        let mut output_nodes: Vec<NodeIndex> = Vec::new();
-
-        let mut input_index = 0;
-        let mut output_index = 0;
-        for i in 0..6 {
-            if i < 4 {
-                let index = graph.add_node(Node {
-                    value: 0.0,
-                    bias: 0.0,
-                    node_type: NodeType::Input(input_index),
-                    layer: 0,
-                });
-                input_nodes.push(index);
-                input_index += 1;
-            } else {
-                let index = graph.add_node(Node {
-                    value: 0.0,
-                    bias: 0.0,
-                    node_type: NodeType::Output(output_index),
-                    layer: 1,
-                });
-                output_nodes.push(index);
-                output_index += 1;
-            }
-        }
-
-        return Genome::new(graph, input_nodes, output_nodes);
+    fn base_genome_io() -> (u32, u32) {
+        (4, 2)
     }
 
     fn set_input_node_values(&self, genome: &mut Genome) {

@@ -35,7 +35,35 @@ pub struct Genome {
 }
 
 impl Genome {
-    pub fn new(graph: DiGraph<Node, f32, GraphIndexType>, input_nodes: Vec<NodeIndex>, output_nodes: Vec<NodeIndex>) -> Self {
+    pub fn new((num_inputs, num_outputs): (u32, u32)) -> Self {
+        let mut graph: petgraph::Graph<Node, f32> = DiGraph::new();
+        let mut input_nodes: Vec<NodeIndex> = Vec::new();
+        let mut output_nodes: Vec<NodeIndex> = Vec::new();
+
+        let mut input_index = 0;
+        let mut output_index = 0;
+        for i in 0..num_inputs + num_outputs {
+            if i < num_inputs {
+                let index = graph.add_node(Node {
+                    value: 0.0,
+                    bias: 0.0,
+                    node_type: NodeType::Input(input_index),
+                    layer: 0,
+                });
+                input_nodes.push(index);
+                input_index += 1;
+            } else {
+                let index = graph.add_node(Node {
+                    value: 0.0,
+                    bias: 0.0,
+                    node_type: NodeType::Output(output_index),
+                    layer: 1,
+                });
+                output_nodes.push(index);
+                output_index += 1;
+            }
+        }
+
         let mut g = Self {
             graph,
             topological_order: Vec::new(),

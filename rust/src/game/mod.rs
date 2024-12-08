@@ -3,7 +3,7 @@ use crate::genome::Genome;
 pub mod chase_point;
 pub mod maze;
 pub trait Game {
-    fn create_base_genome(&self) -> Genome;
+    fn base_genome_io() -> (u32, u32);
     fn set_input_node_values(&self, genome: &mut Genome);
     fn apply_outputs(&mut self, genome: &Genome);
     fn update(&mut self);

@@ -187,20 +187,21 @@ fn mutate_agent(mut agent: Agent, mutation_probability: f64) -> Agent {
         }
     }
 
-    if agent.genome.graph.node_count() < config::MAX_NODES as usize && agent.genome.graph.edge_count() > 0 && thread_rng().gen_bool(0.2 * mutation_probability) {
+    if agent.genome.graph.node_count() < config::MAX_NODES as usize && agent.genome.graph.edge_count() > 0 && thread_rng().gen_bool(0.02 * mutation_probability) {
         if thread_rng().gen_bool(0.5) {
             // new node
             let random_edge = agent.genome.graph.edge_indices().choose(&mut thread_rng()).unwrap();
             let (left_end, right_end) = agent.genome.graph.edge_endpoints(random_edge).unwrap();
+            let removed_edge_weight = *agent.genome.graph.edge_weight(random_edge).unwrap();
             agent.genome.graph.remove_edge(random_edge);
             let new_node = agent.genome.graph.add_node(Node {
                 value: 0.0,
-                bias: thread_rng().gen_range(-1.0..1.0),
+                bias: 1.0,
                 node_type: NodeType::Hidden,
                 layer: 1
             });
-            agent.genome.graph.add_edge(left_end, new_node, thread_rng().gen_range(-1.0..1.0));
-            agent.genome.graph.add_edge(new_node, right_end, thread_rng().gen_range(-1.0..1.0));
+            agent.genome.graph.add_edge(left_end, new_node, removed_edge_weight);
+            agent.genome.graph.add_edge(new_node, right_end, 1.0);
         } else {
             // remove node
             let random_node = agent.genome.graph.node_indices().choose(&mut thread_rng()).unwrap();

@@ -111,8 +111,8 @@ fn draw_info_text(ui: &UIShared, x: f32, y: f32) {
 
 fn draw_genome(genome : &Genome, x: f32, y: f32) {
 
-    const SPACING_X: f32 = 100.0;
-    const SPACING_Y: f32 = 80.0;
+    const SPACING_X: f32 = 75.0;
+    const SPACING_Y: f32 = 75.0;
 
     // convert the node layers to actual positions on the screen
     let mut node_positions: Vec<(f32, f32, NodeIndex)> = Vec::new();
@@ -180,8 +180,8 @@ fn draw_genome(genome : &Genome, x: f32, y: f32) {
             f32::max(0.0, f32::abs(weight)),
             1.0
         );
-        draw_circle(*x, *y, 25.0, color);
-        draw_circle_lines(*x, *y, 25.0, -5.0, if genome.output_nodes.contains(&node) {WHITE} else {BLACK});
+        draw_circle(*x, *y, 20.0, color);
+        draw_circle_lines(*x, *y, 20.0, -5.0, if genome.output_nodes.contains(&node) {WHITE} else {BLACK});
     }
 }
 
